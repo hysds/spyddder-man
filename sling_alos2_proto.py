@@ -67,32 +67,9 @@ def extract(zip_file):
     """Extract the zipfile."""
 
     with zipfile.ZipFile(zip_file, 'r') as zf:
-        zf.extractall()
-    prod_dir = zip_file.replace(".zip", "")
+        prod_dir = zip_file.replace(".zip", "")
+        zf.extractall(prod_dir)
     return prod_dir
-
-# def harvest(mtd_config, extracted_dir, productType):
-#     """Harvest the metadata for this product."""
-#
-#     metf = extracted_name+".met.json"
-#     dsf = extracted_name+".dataset.json"
-#     # mis_char = MISSION_RE.search(extracted).group(1)
-#     # if productType == "slc" or productType == "raw":
-#     fn = "%s/summary.txt" % extracted_dir
-#     create_met_json.create_met_json(fn,metf,mis_char)
-#     _create_dataset_json(extracted,metf,dsf)
-#     # else:
-#     #     #Write JSON for this product
-#     #     metadata={"productname":extracted}
-#     #     with open(metf,"w") as f:
-#     #         f.write(json.dumps(metadata))
-#     # return metf
-#
-#  def _create_met_json(txt_file, json_file, mis_char):
-#      with open(json_file, 'w') as f:
-#          json.dump(metadata, f, indent=2)
-
-
 
 def exists(url):
     """Check based on protocol if url exists."""
@@ -143,8 +120,7 @@ def exists(url):
                                   parsed_url.scheme)
 
 
-def sling(download_url, file_type, prod_met=None,
-          oauth_url=None):
+def sling(download_url, file_type, prod_met=None, oauth_url=None):
     """Download file, push to repo and submit job for extraction."""
 
     # log force flags
@@ -185,55 +161,65 @@ def sling(download_url, file_type, prod_met=None,
     try:
         verify(pri_zip_path, file_type)
         sec_zip_dir = extract(pri_zip_path)
+
         # remove first zip file
         os.remove(pri_zip_path)
 
         # unzip the second layer to gather metadata
         sec_zip_file = glob.glob(os.path.join(sec_zip_dir,'*.zip'))
-        if not sec_zip_file or len(sec_zip_file) > 1:
-            raise RuntimeError("Unable to find second zipfile under " % pri_zip_path)
+        if not len(sec_zip_file) == 1:
+            raise RuntimeError("Unable to find second zipfile under %s" % sec_zip_dir)
 
-        logging.info("Verifying %s is file type %s." % (sec_zip_file, file_type))
-        verify(sec_zip_file, file_type)
-        product= extract(sec_zip_file)
+        logging.info("Verifying %s is file type %s." % (sec_zip_file[0], file_type))
+        verify(sec_zip_file[0], file_type)
+        product_dir = extract(sec_zip_file[0])
+
+
 
     except Exception, e:
         tb = traceback.format_exc()
         logging.error("Failed to verify and extract files of type %s: %s" % \
                       (file_type, tb))
         raise
-    # TODO: move all files forward
 
+    # met.json
     # open summary.txt to extract metadata
-    with open(os.path.join(prod_dir, "summary.txt"), 'r') as f:
+    dummy_section = "summary"
+    with open(os.path.join(product_dir, "summary.txt"), 'r') as f:
         # need to add dummy section for config parse to read .properties file
-        summary_string = '[summary]\n' + f.read()
+        summary_string = '[%s]\n' % dummy_section + f.read()
+    summary_string = summary_string.replace('"', '')
     buf = StringIO.StringIO(summary_string)
     config = ConfigParser.ConfigParser()
     config.readfp(buf)
 
-    # parse the metadata
-    #TODO: These are hardcoded! Do we need them?
-    dataset_id = config.get("summary", "Scs_SceneID")
-    prod_date = datetime.strptime(dataset_id[:-6], '%y%m%d').strftime("%Y-%m-%d")
-    prod_met['source'] = "jaxa"
-    prod_met['dataset_type'] = dataset_id[0:5]
-    location =
-    prod_met['spatial_extent'] = location
+    # parse the metadata from summary.txt
+    metadata = {}
+    for name, value in config.items(dummy_section):
+        metadata[name] = value
 
+    # add more metadeta
+    #TODO: Some of these are hardcoded! Do we need them?
+    dataset_id = metadata["scs_sceneid"]
+    prod_datetime = datetime.datetime.strptime(dataset_id[-6:], '%y%m%d')
+    prod_date = prod_datetime.strftime("%Y-%m-%d")
+    metadata['source'] = "jaxa"
+    metadata['dataset_type'] = dataset_id[0:5]
+    location = {}
+    location['type'] = 'Polygon'
+    location['coordinates'] = [[
+        [metadata['img_imagescenelefttoplongitude'], metadata['img_imagescenelefttoplatitude']],
+        [metadata['img_imagescenerighttoplongitude'], metadata['img_imagescenerighttoplatitude']],
+        [metadata['img_imagescenerightbottomlongitude'], metadata['img_imagescenerightbottomlatitude']],
+        [metadata['img_imagesceneleftbottomlongitude'], metadata['img_imagesceneleftbottomlatitude']],
 
-    # Make a product here
-    dataset_name = "ALOS2_L1.5_GeoTIFF-" + prod_date + "-" + os.path.basename(product)
-    proddir = os.path.join(".", dataset_name)
-    os.makedirs(proddir)
-    shutil.move(product, proddir)
-    metadata = {
-        "download_url": download_url,
-        "prod_name": dataset_id,
-        "prod_date": prod_date,
-        "data_product_name": os.path.basename(product),
-        "dataset": "ALOS2_L1.5_GeoTIFF",
-    }
+    ]]
+    metadata['spatial_extent'] = location
+    metadata['download_url'] = download_url
+    metadata['prod_name'] = dataset_id
+    metadata['prod_date'] = prod_date
+    metadata['data_product_name'] = os.path.basename(product_dir)
+    metadata['dataset'] = "ALOS2_L1.5_GeoTIFF"
 
     # Add metadata from context.json
     if prod_met is not None:
@@ -241,26 +227,38 @@ def sling(download_url, file_type, prod_met=None,
         if prod_met:
             metadata.update(prod_met)
 
+    # datasets.json
+    # extract metadata for datasets
+    dataset = {
+        'version': 'v0.1',
+        'starttime': metadata['img_scenestartdatetime'],
+        'endtime': metadata['img_sceneenddatetime'],
+    }
+    dataset['location'] = location
+
+    # Create the product directory
+    # TODO: move all files forward
+    dataset_name = "ALOS2_L1.5_GeoTIFF-" + prod_date + "-" + os.path.basename(product_dir)
+    proddir = os.path.join(".", dataset_name)
+    os.makedirs(proddir)
+    shutil.move(product_dir, proddir)
+
     # dump metadata
     with open(os.path.join(proddir, dataset_name + ".met.json"), "w") as f:
         json.dump(metadata, f)
         f.close()
 
+    # dump datasets
     # get settings
     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'settings.json')
-    if not os.path.exists(settings_file):
-        settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                     'settings.json.tmpl')
+                                                 'settings.json')
     settings = json.load(open(settings_file))
+    dsets_file = settings['DATASETS_CFG']
+    if os.path.exists("./datasets.json"):
+        dsets_file = "./datasets.json"
 
-    # dump dataset
-    with open(os.path.join(proddir, dataset_name + ".dataset.json"), "w") as f:
-        dataset_json = {"version": settings["INCOMING_VERSION"]}
-        if 'spatial_extent' in prod_met:
-            dataset_json['location'] = prod_met['spatial_extent']
-        json.dump(dataset_json, f)
-        f.close()
+    with open(dsets_file, 'w') as f:
+        json.dump(dataset, f, indent=2, sort_keys=True)
 
 
 if __name__ == "__main__":
