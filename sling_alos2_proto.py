@@ -9,7 +9,7 @@ Sling data from a source to a destination:
 HTTP/HTTPS, FTP and OAuth authentication is handled using .netrc.
 """
 
-import os, sys, re, requests, json, logging, traceback, argparse, shutil, glob
+import datetime, os, sys, re, requests, json, logging, traceback, argparse, shutil, glob
 import tarfile, zipfile
 from urlparse import urlparse
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
@@ -70,6 +70,28 @@ def extract(zip_file):
         zf.extractall()
     prod_dir = zip_file.replace(".zip", "")
     return prod_dir
+
+# def harvest(mtd_config, extracted_dir, productType):
+#     """Harvest the metadata for this product."""
+#
+#     metf = extracted_name+".met.json"
+#     dsf = extracted_name+".dataset.json"
+#     # mis_char = MISSION_RE.search(extracted).group(1)
+#     # if productType == "slc" or productType == "raw":
+#     fn = "%s/summary.txt" % extracted_dir
+#     create_met_json.create_met_json(fn,metf,mis_char)
+#     _create_dataset_json(extracted,metf,dsf)
+#     # else:
+#     #     #Write JSON for this product
+#     #     metadata={"productname":extracted}
+#     #     with open(metf,"w") as f:
+#     #         f.write(json.dumps(metadata))
+#     # return metf
+#
+#  def _create_met_json(txt_file, json_file, mis_char):
+#      with open(json_file, 'w') as f:
+#          json.dump(metadata, f, indent=2)
+
 
 
 def exists(url):
@@ -173,7 +195,7 @@ def sling(download_url, file_type, prod_met=None,
 
         logging.info("Verifying %s is file type %s." % (sec_zip_file, file_type))
         verify(sec_zip_file, file_type)
-        prod_dir = extract(sec_zip_file)
+        product= extract(sec_zip_file)
 
     except Exception, e:
         tb = traceback.format_exc()
@@ -190,30 +212,27 @@ def sling(download_url, file_type, prod_met=None,
     config = ConfigParser.ConfigParser()
     config.readfp(buf)
 
+    # parse the metadata
     #TODO: These are hardcoded! Do we need them?
     dataset_id = config.get("summary", "Scs_SceneID")
-
-    # parse the metadata
+    prod_date = datetime.strptime(dataset_id[:-6], '%y%m%d').strftime("%Y-%m-%d")
     prod_met['source'] = "jaxa"
     prod_met['dataset_type'] = dataset_id[0:5]
-    if prod_met is None:
-        prod_met = {}
-    prod_met['source'] = qtype
-    prod_met['dataset_type'] = title[0:3]
+    location =
     prod_met['spatial_extent'] = location
 
+
     # Make a product here
-    dataset_name = "incoming-alos2-" + prod_date + "-" + os.path.basename(path)
+    dataset_name = "ALOS2_L1.5_GeoTIFF-" + prod_date + "-" + os.path.basename(product)
     proddir = os.path.join(".", dataset_name)
     os.makedirs(proddir)
-    shutil.move(path, proddir)
+    shutil.move(product, proddir)
     metadata = {
         "download_url": download_url,
-        "prod_name": prod_name,
+        "prod_name": dataset_id,
         "prod_date": prod_date,
-        "file": path,
-        "data_product_name": os.path.basename(path),
-        "dataset": "incoming-alos2",
+        "data_product_name": os.path.basename(product),
+        "dataset": "ALOS2_L1.5_GeoTIFF",
     }
 
     # Add metadata from context.json
