@@ -231,8 +231,8 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     # extract metadata for datasets
     dataset = {
         'version': 'v0.1',
-        'starttime': metadata['img_scenestartdatetime'],
-        'endtime': metadata['img_sceneenddatetime'],
+        'starttime': datetime.datetime.strptime(metadata['img_scenestartdatetime'], '%Y%m%d %H:%M%S.%f').strftime("%Y-%m-%dT%H:%M%S.%f"),
+        'endtime': datetime.datetime.strptime(metadata['img_sceneenddatetime'], '%Y%m%d %H:%M%S.%f').strftime("%Y-%m-%dT%H:%M%S.%f")
     }
     dataset['location'] = location
 
