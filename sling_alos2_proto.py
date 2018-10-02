@@ -162,9 +162,6 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         verify(pri_zip_path, file_type)
         sec_zip_dir = extract(pri_zip_path)
 
-        # remove first zip file
-        os.remove(pri_zip_path)
-
         # unzip the second layer to gather metadata
         sec_zip_file = glob.glob(os.path.join(sec_zip_dir,'*.zip'))
         if not len(sec_zip_file) == 1:
@@ -229,19 +226,22 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
 
     # datasets.json
     # extract metadata for datasets
+    dataset_name = "ALOS2_L1.5_GeoTIFF-" + os.path.basename(product_dir)
     dataset = {
         'version': 'v0.1',
-        'starttime': datetime.datetime.strptime(metadata['img_scenestartdatetime'], '%Y%m%d %H:%M%S.%f').strftime("%Y-%m-%dT%H:%M%S.%f"),
-        'endtime': datetime.datetime.strptime(metadata['img_sceneenddatetime'], '%Y%m%d %H:%M%S.%f').strftime("%Y-%m-%dT%H:%M%S.%f")
+        'label': dataset_name,
+        'starttime': datetime.datetime.strptime(metadata['img_scenestartdatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f"),
+        'endtime': datetime.datetime.strptime(metadata['img_sceneenddatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
     dataset['location'] = location
 
     # Create the product directory
-    # TODO: move all files forward
-    dataset_name = "ALOS2_L1.5_GeoTIFF-" + prod_date + "-" + os.path.basename(product_dir)
     proddir = os.path.join(".", dataset_name)
     os.makedirs(proddir)
-    shutil.move(product_dir, proddir)
+    # move all files forward
+    files = os.listdir(product_dir)
+    for f in files:
+        shutil.move(os.path.join(product_dir, f), proddir)
 
     # dump metadata
     with open(os.path.join(proddir, dataset_name + ".met.json"), "w") as f:
@@ -259,6 +259,11 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
 
     with open(dsets_file, 'w') as f:
         json.dump(dataset, f, indent=2, sort_keys=True)
+
+    # remove unwanted zips
+    shutil.rmtree(sec_zip_dir, ignore_errors=True)
+    # remove first zip file
+    os.remove(pri_zip_path)
 
 
 if __name__ == "__main__":
