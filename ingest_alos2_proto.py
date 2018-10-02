@@ -300,11 +300,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # load prod_met as string
 
-    j = json.loads(open("_context.json", "r").read())
-    prod_met = json.dumps(j["prod_met"])
+    # j = json.loads(open("_context.json", "r").read())
+    # prod_met = json.dumps(j["prod_met"])
 
     try:
-        sling(args.download_url, args.file_type, prod_met, args.oauth_url)
+        sling(args.download_url, args.file_type, oauth_url=args.oauth_url)
         # sling(args.download_url, args.prod_name, args.file_type,
         #       args.prod_date, prod_met, args.oauth_url)
     except Exception as e:
