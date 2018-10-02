@@ -1,0 +1,25 @@
+{
+  "command": "/home/ops/verdi/ops/spyddder-man/ingest_alos2_proto.py",
+  "imported_worker_files": {
+    "/home/ops/.netrc": "/home/ops/.netrc",
+    "/home/ops/.aws": "/home/ops/.aws",
+    "/home/ops/verdi/ops/spyddder-man/settings.json": "/home/ops/verdi/ops/spyddder-man/settings.json",
+    "/home/ops/ariamh/conf/settings.conf": "/home/ops/ariamh/conf/settings.conf"
+  },
+  "recommended-queues" : [
+    "factotum-job_worker-small"
+  ],
+  "disk_usage": "50GB",
+  "soft_time_limit": 14400,
+  "time_limit": 14700,
+  "params" : [
+    {
+      "name": "download_url",
+      "destination": "localize"
+    },
+    {
+      "name": "file_type",
+      "destination": "positional"
+    }
+  ]
+}

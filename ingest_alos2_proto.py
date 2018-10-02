@@ -272,13 +272,13 @@ if __name__ == "__main__":
                                              "(credentials stored " +
                                              "in .netrc)")
     # we do not need a repo url
-    parser.add_argument("repo_url", help="repository file URL")
-    parser.add_argument("prod_name", help="product name to use for " +
-                                          " canonical product directory")
+    # parser.add_argument("repo_url", help="repository file URL")
+    # parser.add_argument("prod_name", help="product name to use for " +
+    #                                       " canonical product directory")
     parser.add_argument("file_type", help="download file type to verify",
                         choices=ALL_TYPES)
-    parser.add_argument("prod_date", help="product date to use for " +
-                                          " canonical product directory")
+    # parser.add_argument("prod_date", help="product date to use for " +
+    #                                       " canonical product directory")
     parser.add_argument("--oauth_url", help="OAuth authentication URL " +
                                             "(credentials stored in " +
                                             ".netrc)", required=False)
@@ -304,8 +304,9 @@ if __name__ == "__main__":
     prod_met = json.dumps(j["prod_met"])
 
     try:
-        sling(args.download_url, args.prod_name, args.file_type,
-              args.prod_date, prod_met, args.oauth_url)
+        sling(args.download_url, args.file_type, prod_met, args.oauth_url)
+        # sling(args.download_url, args.prod_name, args.file_type,
+        #       args.prod_date, prod_met, args.oauth_url)
     except Exception as e:
         with open('_alt_error.txt', 'a') as f:
             f.write("%s\n" % str(e))

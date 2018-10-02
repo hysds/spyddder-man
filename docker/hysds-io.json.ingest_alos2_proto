@@ -1,0 +1,15 @@
+{
+  "label" : "ALOS2 L1.5 Proto",
+  "recommended-queues" : [ "factotum-job_worker-small" ],
+  "allowed_accounts": [ "ops" ],
+  "params" : [
+    {
+      "name": "download_url",
+      "from": "submitter"
+    },
+    {
+      "name": "file_type",
+      "from": "submitter"
+    }
+  ]
+}
