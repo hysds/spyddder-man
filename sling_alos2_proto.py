@@ -208,10 +208,10 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     location = {}
     location['type'] = 'Polygon'
     location['coordinates'] = [[
-        [metadata['img_imagescenelefttoplongitude'], metadata['img_imagescenelefttoplatitude']],
-        [metadata['img_imagescenerighttoplongitude'], metadata['img_imagescenerighttoplatitude']],
-        [metadata['img_imagescenerightbottomlongitude'], metadata['img_imagescenerightbottomlatitude']],
-        [metadata['img_imagesceneleftbottomlongitude'], metadata['img_imagesceneleftbottomlatitude']],
+        [float(metadata['img_imagescenelefttoplongitude']), float(metadata['img_imagescenelefttoplatitude'])],
+        [float(metadata['img_imagescenerighttoplongitude']), float(metadata['img_imagescenerighttoplatitude'])],
+        [float(metadata['img_imagescenerightbottomlongitude']), float(metadata['img_imagescenerightbottomlatitude'])],
+        [float(metadata['img_imagesceneleftbottomlongitude']), float(metadata['img_imagesceneleftbottomlatitude'])]
 
     ]]
     metadata['spatial_extent'] = location
