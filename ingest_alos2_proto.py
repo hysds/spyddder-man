@@ -252,7 +252,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     # get settings
     # list all the files
     ls = os.listdir(os.path.dirname(os.path.realpath(__file__)))
-    logging.info(""+ls)
+    logging.info(''.join(ls))
     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'settings.json')
     if not os.path.exists(settings_file):
