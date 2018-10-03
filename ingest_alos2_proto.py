@@ -226,7 +226,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
 
     # datasets.json
     # extract metadata for datasets
-    dataset_name = "ALOS2_L1.5_GeoTIFF-" + os.path.basename(product_dir)
+    dataset_name = "ALOS2_L1.5_GeoTIFF-" + prod_date.replace("-", "") + "-" + os.path.basename(product_dir)
     dataset = {
         'version': 'v0.1',
         'label': dataset_name,
