@@ -248,24 +248,22 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         json.dump(metadata, f)
         f.close()
 
-    # dump datasets
     # get settings
-    # list all the files
-    ls = os.listdir(os.path.dirname(os.path.realpath(__file__)))
-    logging.info(''.join(ls))
-    settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'settings.json')
-    if not os.path.exists(settings_file):
-        settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                     'settings.json.tmpl')
-    settings = json.load(open(settings_file))
+    # settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+    #                              'settings.json')
+    # if not os.path.exists(settings_file):
+    #     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+    #                                  'settings.json.tmpl')
+    # settings = json.load(open(settings_file))
 
-    dsets_file = settings['DATASETS_CFG']
-    if os.path.exists("./datasets.json"):
-        dsets_file = "./datasets.json"
+    # dsets_file = settings['DATASETS_CFG']
+    # if os.path.exists("./datasets.json"):
+    #     dsets_file = "./datasets.json"
 
-    with open(dsets_file, 'w') as f:
-        json.dump(dataset, f, indent=2, sort_keys=True)
+    # dump dataset
+    with open(os.path.join(proddir, dataset_name + ".dataset.json"), "w") as f:
+        json.dump(dataset, f)
+        f.close()
 
     # remove unwanted zips
     shutil.rmtree(sec_zip_dir, ignore_errors=True)
