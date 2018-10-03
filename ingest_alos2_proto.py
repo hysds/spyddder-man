@@ -251,8 +251,12 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     # dump datasets
     # get settings
     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                 'settings.json')
+                                 'settings.json')
+    if not os.path.exists(settings_file):
+        settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                     'settings.json.tmpl')
     settings = json.load(open(settings_file))
+
     dsets_file = settings['DATASETS_CFG']
     if os.path.exists("./datasets.json"):
         dsets_file = "./datasets.json"
