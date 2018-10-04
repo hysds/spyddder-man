@@ -193,15 +193,21 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     metadata['prod_date'] = prod_date
     metadata['dataset'] = "ALOS2_GeoTIFF"
     metadata['download_url'] = download_url
+
+    # facetview filters
+    metadata['spacecraftName'] = dataset_name[0:5]
     metadata['dataset_type'] = dataset_name[0:5]
     metadata['orbitNumber'] = int(dataset_name[5:10])
     metadata['scene_count'] = int(dataset_name[10:14])
-    metadata['observationMode'] = dataset_name[22:25]
+    # TODO: not sure if this is the right way to expose this
+    dfdn = {"AcquistionMode":  dataset_name[22:25]}
+    metadata['dfdn'] = dfdn
     metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
     metadata['level'] = "L" + dataset_name[26:29]
     metadata['processingOption'] = dataset_name[29]
     metadata['mapProjection'] = dataset_name[30]
     metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
+
 
     # open summary.txt to extract moar metadata
     dummy_section = "summary"
