@@ -185,14 +185,6 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     # extract information from filename see: https://www.eorc.jaxa.jp/ALOS-2/en/doc/fdata/PALSAR-2_xx_Format_GeoTIFF_E_r.pdf
     #TODO: Some of these are hardcoded! Do we need them?
     metadata = {}
-    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
-    prod_date = prod_datetime.strftime("%Y-%m-%d")
-
-    metadata['source'] = "jaxa"
-    metadata['prod_name'] = dataset_name
-    metadata['prod_date'] = prod_date
-    metadata['dataset'] = "ALOS2_GeoTIFF"
-    metadata['download_url'] = download_url
 
     # facetview filters
     metadata['spacecraftName'] = dataset_name[0:5]
@@ -208,6 +200,14 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     metadata['mapProjection'] = dataset_name[30]
     metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
 
+    # others
+    metadata['prod_name'] = dataset_name
+    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
+    prod_date = prod_datetime.strftime("%Y-%m-%d")
+    metadata['prod_date'] = prod_date
+    metadata['dataset'] = "ALOS2_GeoTIFF"
+    metadata['download_url'] = download_url
+    metadata['source'] = "jaxa"
 
     # open summary.txt to extract moar metadata
     dummy_section = "summary"
@@ -246,7 +246,6 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
 
     # datasets.json
     # extract metadata for datasets
-    dataset_id = dataset_name
     dataset = {
         'version': 'v0.1',
         'label': dataset_name,
@@ -256,7 +255,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     dataset['location'] = location
 
     # Create the product directory
-    proddir = os.path.join(".", dataset_id)
+    proddir = os.path.join(".", dataset_name)
     os.makedirs(proddir)
     # move all files forward
     files = os.listdir(product_dir)
@@ -264,8 +263,8 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         shutil.move(os.path.join(product_dir, f), proddir)
 
     # dump metadata
-    with open(os.path.join(proddir, dataset_id + ".met.json"), "w") as f:
-        json.dump(metadata, f)
+    with open(os.path.join(proddir, dataset_name + ".met.json"), "w") as f:
+        json.dump(metadata, f, indent=2)
         f.close()
 
     # get settings
@@ -281,8 +280,8 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     #     dsets_file = "./datasets.json"
 
     # dump dataset
-    with open(os.path.join(proddir, dataset_id + ".dataset.json"), "w") as f:
-        json.dump(dataset, f)
+    with open(os.path.join(proddir, dataset_name + ".dataset.json"), "w") as f:
+        json.dump(dataset, f, indent=2)
         f.close()
 
     # remove unwanted zips
