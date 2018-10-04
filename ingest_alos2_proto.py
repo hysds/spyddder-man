@@ -185,18 +185,23 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     # extract information from filename see: https://www.eorc.jaxa.jp/ALOS-2/en/doc/fdata/PALSAR-2_xx_Format_GeoTIFF_E_r.pdf
     #TODO: Some of these are hardcoded! Do we need them?
     metadata = {}
+    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
+    prod_date = prod_datetime.strftime("%Y-%m-%d")
+
+    metadata['source'] = "jaxa"
+    metadata['prod_name'] = dataset_name
+    metadata['prod_date'] = prod_date
+    metadata['dataset'] = "ALOS2_GeoTIFF"
+    metadata['download_url'] = download_url
     metadata['dataset_type'] = dataset_name[0:5]
     metadata['orbitNumber'] = int(dataset_name[5:10])
     metadata['scene_count'] = int(dataset_name[10:14])
-    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
-    prod_date = prod_datetime.strftime("%Y-%m-%d")
     metadata['observationMode'] = dataset_name[22:25]
     metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
     metadata['level'] = "L" + dataset_name[26:29]
     metadata['processingOption'] = dataset_name[29]
     metadata['mapProjection'] = dataset_name[30]
     metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
-    metadata['source'] = "jaxa"
 
     # open summary.txt to extract moar metadata
     dummy_section = "summary"
@@ -225,10 +230,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
 
     ]]
     metadata['spatial_extent'] = location
-    metadata['download_url'] = download_url
-    metadata['prod_name'] = dataset_name
-    metadata['prod_date'] = prod_date
-    metadata['dataset'] = "ALOS2_GeoTIFF"
+
 
     # Add metadata from context.json
     if prod_met is not None:
