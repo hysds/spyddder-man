@@ -1,5 +1,5 @@
 {
-  "label" : "ALOS2 L1.5 Proto",
+  "label" : "ALOS2 Ingest Proto",
   "recommended-queues" : [ "factotum-job_worker-small" ],
   "allowed_accounts": [ "ops" ],
   "submission_type":"individual",

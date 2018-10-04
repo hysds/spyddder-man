@@ -171,7 +171,8 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         verify(sec_zip_file[0], file_type)
         product_dir = extract(sec_zip_file[0])
 
-
+        # get kml filename to extract dataset details
+        dataset_name = os.path.splitext(os.path.basename(glob.glob(os.path.join(product_dir, '*.kml'))[0]))[0]
 
     except Exception, e:
         tb = traceback.format_exc()
@@ -180,7 +181,24 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         raise
 
     # met.json
-    # open summary.txt to extract metadata
+    # use dataset_name to grab metadata
+    # extract information from filename see: https://www.eorc.jaxa.jp/ALOS-2/en/doc/fdata/PALSAR-2_xx_Format_GeoTIFF_E_r.pdf
+    #TODO: Some of these are hardcoded! Do we need them?
+    metadata = {}
+    metadata['dataset_type'] = dataset_name[0:5]
+    metadata['orbitNumber'] = int(dataset_name[5:10])
+    metadata['scene_count'] = int(dataset_name[10:14])
+    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
+    prod_date = prod_datetime.strftime("%Y-%m-%d")
+    metadata['observationMode'] = dataset_name[22:25]
+    metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
+    metadata['level'] = "L" + dataset_name[26:29]
+    metadata['processingOption'] = dataset_name[29]
+    metadata['mapProjection'] = dataset_name[30]
+    metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
+    metadata['source'] = "jaxa"
+
+    # open summary.txt to extract moar metadata
     dummy_section = "summary"
     with open(os.path.join(product_dir, "summary.txt"), 'r') as f:
         # need to add dummy section for config parse to read .properties file
@@ -191,17 +209,11 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     config.readfp(buf)
 
     # parse the metadata from summary.txt
-    metadata = {}
+
     for name, value in config.items(dummy_section):
         metadata[name] = value
 
-    # add more metadeta
-    #TODO: Some of these are hardcoded! Do we need them?
-    dataset_id = metadata["scs_sceneid"]
-    prod_datetime = datetime.datetime.strptime(dataset_id[-6:], '%y%m%d')
-    prod_date = prod_datetime.strftime("%Y-%m-%d")
-    metadata['source'] = "jaxa"
-    metadata['dataset_type'] = dataset_id[0:5]
+
     location = {}
     location['type'] = 'Polygon'
     location['coordinates'] = [[
@@ -214,10 +226,9 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     ]]
     metadata['spatial_extent'] = location
     metadata['download_url'] = download_url
-    metadata['prod_name'] = dataset_id
+    metadata['prod_name'] = dataset_name
     metadata['prod_date'] = prod_date
-    metadata['data_product_name'] = os.path.basename(product_dir)
-    metadata['dataset'] = "ALOS2_L1.5_GeoTIFF"
+    metadata['dataset'] = "ALOS2_GeoTIFF"
 
     # Add metadata from context.json
     if prod_met is not None:
@@ -227,7 +238,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
 
     # datasets.json
     # extract metadata for datasets
-    dataset_name = "ALOS2_L1.5_GeoTIFF-" + prod_date.replace("-", "") + "-" + os.path.basename(product_dir)
+    dataset_id = dataset_name
     dataset = {
         'version': 'v0.1',
         'label': dataset_name,
@@ -237,7 +248,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     dataset['location'] = location
 
     # Create the product directory
-    proddir = os.path.join(".", dataset_name)
+    proddir = os.path.join(".", dataset_id)
     os.makedirs(proddir)
     # move all files forward
     files = os.listdir(product_dir)
@@ -245,7 +256,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         shutil.move(os.path.join(product_dir, f), proddir)
 
     # dump metadata
-    with open(os.path.join(proddir, dataset_name + ".met.json"), "w") as f:
+    with open(os.path.join(proddir, dataset_id + ".met.json"), "w") as f:
         json.dump(metadata, f)
         f.close()
 
@@ -262,7 +273,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     #     dsets_file = "./datasets.json"
 
     # dump dataset
-    with open(os.path.join(proddir, dataset_name + ".dataset.json"), "w") as f:
+    with open(os.path.join(proddir, dataset_id + ".dataset.json"), "w") as f:
         json.dump(dataset, f)
         f.close()
 
