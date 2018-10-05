@@ -187,6 +187,13 @@ def create_product_browse(tiff_file):
     gdal.Translate(out_file, tiff_file, options=options_string)
     return
 
+def create_product_kmz(tiff_file, dataset_name):
+    # TODO: the static scale of 7500 has been chosen! We need better means to scale it.
+    options_string = '-of KMLSUPEROVERLAY -ot Byte -scale 0 7500 0 255'
+    out_file = dataset_name + ".kmz"
+    gdal.Translate(out_file, tiff_file, options=options_string)
+    return
+
 
 def ingest_alos2(download_url, file_type, oauth_url=None):
     """Download file, push to repo and submit job for extraction."""
@@ -243,8 +250,14 @@ def ingest_alos2(download_url, file_type, oauth_url=None):
         f.close()
 
     # create browse products
-    for tif_file in glob.glob("*.tif"):
+    tiff_files = glob.glob("*.tif")
+    for tif_file in tiff_files:
         create_product_browse(tif_file)
+
+    # create kmz products
+    for tif_file in tiff_files:
+        if "IMG-HH" in tif_file:
+            create_product_kmz(tif_file, dataset_name)
 
     # remove unwanted zips
     shutil.rmtree(sec_zip_dir, ignore_errors=True)
