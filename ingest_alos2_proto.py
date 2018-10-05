@@ -202,23 +202,23 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     config.readfp(buf)
 
     # parse the metadata from summary.txt
-
+    alos2md = {}
     for name, value in config.items(dummy_section):
-        metadata[name] = value
+        alos2md[name] = value
 
+    metadata['alos2md'] = alos2md
 
     location = {}
     location['type'] = 'Polygon'
     location['coordinates'] = [[
-        [float(metadata['img_imagescenelefttoplongitude']), float(metadata['img_imagescenelefttoplatitude'])],
-        [float(metadata['img_imagescenerighttoplongitude']), float(metadata['img_imagescenerighttoplatitude'])],
-        [float(metadata['img_imagescenerightbottomlongitude']), float(metadata['img_imagescenerightbottomlatitude'])],
-        [float(metadata['img_imagesceneleftbottomlongitude']), float(metadata['img_imagesceneleftbottomlatitude'])],
-        [float(metadata['img_imagescenelefttoplongitude']), float(metadata['img_imagescenelefttoplatitude'])]
+        [float(metadata['alos2md']['img_imagescenelefttoplongitude']), float(metadata['alos2md']['img_imagescenelefttoplatitude'])],
+        [float(metadata['alos2md']['img_imagescenerighttoplongitude']), float(metadata['alos2md']['img_imagescenerighttoplatitude'])],
+        [float(metadata['alos2md']['img_imagescenerightbottomlongitude']), float(metadata['alos2md']['img_imagescenerightbottomlatitude'])],
+        [float(metadata['alos2md']['img_imagesceneleftbottomlongitude']), float(metadata['alos2md']['img_imagesceneleftbottomlatitude'])],
+        [float(metadata['alos2md']['img_imagescenelefttoplongitude']), float(metadata['alos2md']['img_imagescenelefttoplatitude'])]
 
     ]]
     metadata['spatial_extent'] = location
-
 
     # Add metadata from context.json
     if prod_met is not None:
@@ -226,10 +226,18 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         if prod_met:
             metadata.update(prod_met)
 
+    # get settings for dataset version
+    settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                 'settings.json')
+    if not os.path.exists(settings_file):
+        settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                     'settings.json.tmpl')
+    settings = json.load(open(settings_file))
+
     # datasets.json
     # extract metadata for datasets
     dataset = {
-        'version': 'v0.1',
+        'version': settings['ALOS2_INGEST_VERSION'],
         'label': dataset_name,
         'starttime': datetime.datetime.strptime(metadata['img_scenestartdatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f"),
         'endtime': datetime.datetime.strptime(metadata['img_sceneenddatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -248,18 +256,6 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     with open(os.path.join(proddir, dataset_name + ".met.json"), "w") as f:
         json.dump(metadata, f, indent=2)
         f.close()
-
-    # TODO: get settings for version
-    # settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-    #                              'settings.json')
-    # if not os.path.exists(settings_file):
-    #     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-    #                                  'settings.json.tmpl')
-    # settings = json.load(open(settings_file))
-
-    # dsets_file = settings['DATASETS_CFG']
-    # if os.path.exists("./datasets.json"):
-    #     dsets_file = "./datasets.json"
 
     # dump dataset
     with open(os.path.join(proddir, dataset_name + ".dataset.json"), "w") as f:
