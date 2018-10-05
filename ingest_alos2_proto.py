@@ -206,14 +206,14 @@ def ingest_alos2(download_url, file_type, oauth_url=None):
                       (file_type, tb))
         raise
 
-    # met.json
+    # create met.json
     alos2_md_file = os.path.join(product_dir, "summary.txt")
     metadata = create_metadata(alos2_md_file, download_url)
 
-    # dataset.json
+    # create dataset.json
     dataset = create_dataset(metadata)
 
-    # Create the product directory
+    # create the product directory
     dataset_name = metadata['prod_name']
     proddir = os.path.join(".", dataset_name)
     os.makedirs(proddir)
@@ -234,7 +234,6 @@ def ingest_alos2(download_url, file_type, oauth_url=None):
 
     # remove unwanted zips
     shutil.rmtree(sec_zip_dir, ignore_errors=True)
-    # remove first zip file
     os.remove(pri_zip_path)
 
 
