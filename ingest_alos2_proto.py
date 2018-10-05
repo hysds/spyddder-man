@@ -29,6 +29,8 @@ from hysds.celery import app
 from hysds.dataset_ingest import ingest
 from hysds_commons.job_rest_utils import single_process_and_submission
 
+from osgeo import gdal
+
 # disable warnings for SSL verification
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 requests.packages.urllib3.disable_warnings(InsecurePlatformWarning)
@@ -178,6 +180,14 @@ def create_dataset(metadata):
     return dataset
 
 
+def create_product_browse(tiff_file):
+    # TODO: the static scale of 7500 has been chosen! We need better means to scale it.
+    options_string = '-of PNG -ot Byte -scale 0 7500 0 255 -outsize 10% 10%'
+    out_file = os.path.splitext(tiff_file)[0] + '.browse.png'
+    gdal.Translate(out_file, tiff_file, options=options_string)
+    return
+
+
 def ingest_alos2(download_url, file_type, oauth_url=None):
     """Download file, push to repo and submit job for extraction."""
 
@@ -231,6 +241,10 @@ def ingest_alos2(download_url, file_type, oauth_url=None):
     with open(os.path.join(proddir, dataset_name + ".dataset.json"), "w") as f:
         json.dump(dataset, f, indent=2)
         f.close()
+
+    # create browse products
+    for tif_file in glob.glob("*.tif"):
+        create_product_browse(tif_file)
 
     # remove unwanted zips
     shutil.rmtree(sec_zip_dir, ignore_errors=True)
