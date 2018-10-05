@@ -170,9 +170,11 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     metadata['spacecraftName'] = dataset_name[0:5]
     metadata['dataset_type'] = dataset_name[0:5]
     metadata['orbitNumber'] = int(dataset_name[5:10])
-    metadata['scene_count'] = int(dataset_name[10:14])
-    # TODO: not sure if this is the right way to expose this
-    dfdn = {"AcquisitionMode":  dataset_name[22:25]}
+    metadata['scene_frame_number'] = int(dataset_name[10:14])
+
+    # TODO: not sure if this is the right way to expose this in Facet Filters, using CSK's metadata structure
+    dfdn = {"AcquistionMode":  dataset_name[22:25],
+            "LookSide": dataset_name[25]}
     metadata['dfdn'] = dfdn
     metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
     metadata['level'] = "L" + dataset_name[26:29]
@@ -247,7 +249,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         json.dump(metadata, f, indent=2)
         f.close()
 
-    # get settings
+    # TODO: get settings for version
     # settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
     #                              'settings.json')
     # if not os.path.exists(settings_file):
