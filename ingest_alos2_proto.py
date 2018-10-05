@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 """
-Sling data from a source to a destination:
+Ingest ALOS2 data from a source to a destination:
 
   1) download data from a source and verify,
-  2) push verified data to repository,
-  3) submit extract-ingest job.
+  2) extracts data and creates metadata
+  3) push data to repository
+
 
 HTTP/HTTPS, FTP and OAuth authentication is handled using .netrc.
 """
@@ -71,53 +72,6 @@ def extract(zip_file):
         zf.extractall(prod_dir)
     return prod_dir
 
-def exists(url):
-    """Check based on protocol if url exists."""
-
-    parsed_url = urlparse(url)
-    if parsed_url.scheme == "":
-        raise RuntimeError("Invalid url: %s" % url)
-    if parsed_url.scheme in ('http', 'https'):
-        r = requests.head(url, verify=False)
-        if r.status_code == 200:
-            return True
-        elif r.status_code == 404:
-            return False
-        else:
-            r.raise_for_status()
-    elif parsed_url.scheme in ('s3', 's3s'):
-        s3_eps = boto.regioninfo.load_regions()['s3']
-        region = None
-        for r, e in s3_eps.iteritems():
-            if re.search(e, parsed_url.netloc):
-                region = r
-                break
-        if region is None:
-            raise RuntimeError("Failed to find region for endpoint %s." % \
-                               parsed_url.netloc)
-        conn = boto.s3.connect_to_region(region,
-                                         aws_access_key_id=parsed_url.username,
-                                         aws_secret_access_key=parsed_url.password)
-        match = re.search(r'/(.*?)/(.*)$', parsed_url.path)
-        if not match:
-            raise RuntimeError("Failed to parse bucket & key from %s." % \
-                               parsed_url.path)
-        bn, kn = match.groups()
-        try:
-            bucket = conn.get_bucket(bn)
-        except boto.exception.S3ResponseError, e:
-            if e.status == 404:
-                return False
-            else:
-                raise
-        key = bucket.get_key(kn)
-        if key is None:
-            return False
-        else:
-            return True
-    else:
-        raise NotImplementedError("Failed to check existence of %s url." % \
-                                  parsed_url.scheme)
 
 def download(download_url, dest, oauth_url):
     # download
@@ -129,6 +83,100 @@ def download(download_url, dest, oauth_url):
         logging.error("Failed to download %s to %s: %s" % (download_url,
                                                            dest, tb))
         raise
+
+
+def create_metadata(alos2_md_file, download_url):
+    # TODO: Some of these are hardcoded! Do we need them?
+    metadata = {}
+    # open summary.txt to extract metadata
+    # extract information from summary see: https://www.eorc.jaxa.jp/ALOS-2/en/doc/fdata/PALSAR-2_xx_Format_GeoTIFF_E_r.pdf
+    logging.info("Extracting metadata from %s" % alos2_md_file)
+    dummy_section = "summary"
+    with open(alos2_md_file, 'r') as f:
+        # need to add dummy section for config parse to read .properties file
+        summary_string = '[%s]\n' % dummy_section + f.read()
+    summary_string = summary_string.replace('"', '')
+    buf = StringIO.StringIO(summary_string)
+    config = ConfigParser.ConfigParser()
+    config.readfp(buf)
+
+    # parse the metadata from summary.txt
+    alos2md = {}
+    for name, value in config.items(dummy_section):
+        alos2md[name] = value
+
+    metadata['alos2md'] = alos2md
+
+    # facetview filters
+    dataset_name = metadata['alos2md']['scs_sceneid'] + "_" + metadata['alos2md']['pds_productid']
+    metadata['prod_name'] = dataset_name
+    metadata['spacecraftName'] = dataset_name[0:5]
+    metadata['dataset_type'] = dataset_name[0:5]
+    metadata['orbitNumber'] = int(dataset_name[5:10])
+    metadata['scene_frame_number'] = int(dataset_name[10:14])
+    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
+    prod_date = prod_datetime.strftime("%Y-%m-%d")
+    metadata['prod_date'] = prod_date
+
+    # TODO: not sure if this is the right way to expose this in Facet Filters, using CSK's metadata structure
+    dfdn = {"AcquistionMode": dataset_name[22:25],
+            "LookSide": dataset_name[25]}
+    metadata['dfdn'] = dfdn
+
+    metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
+    metadata['level'] = "L" + dataset_name[26:29]
+    metadata['processingOption'] = dataset_name[29]
+    metadata['mapProjection'] = dataset_name[30]
+    metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
+
+    # others
+    metadata['dataset'] = "ALOS2_GeoTIFF"
+    metadata['source'] = "jaxa"
+    metadata['download_url'] = download_url
+    location = {}
+    location['type'] = 'Polygon'
+    location['coordinates'] = [[
+        [float(metadata['alos2md']['img_imagescenelefttoplongitude']), float(metadata['alos2md']['img_imagescenelefttoplatitude'])],
+        [float(metadata['alos2md']['img_imagescenerighttoplongitude']), float(metadata['alos2md']['img_imagescenerighttoplatitude'])],
+        [float(metadata['alos2md']['img_imagescenerightbottomlongitude']), float(metadata['alos2md']['img_imagescenerightbottomlatitude'])],
+        [float(metadata['alos2md']['img_imagesceneleftbottomlongitude']), float(metadata['alos2md']['img_imagesceneleftbottomlatitude'])],
+        [float(metadata['alos2md']['img_imagescenelefttoplongitude']), float(metadata['alos2md']['img_imagescenelefttoplatitude'])]
+
+    ]]
+    metadata['location'] = location
+
+    # # Add metadata from context.json
+    # # copy _context.json if it exists
+    # ctx = {}
+    # ctx_file = "_context.json"
+    # if os.path.exists(ctx_file):
+    #     with open(ctx_file) as f:
+    #         ctx = json.load(f)
+
+    return metadata
+
+
+def create_dataset(metadata):
+    # get settings for dataset version
+    settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                 'settings.json')
+    if not os.path.exists(settings_file):
+        settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                     'settings.json.tmpl')
+    settings = json.load(open(settings_file))
+
+    # datasets.json
+    # extract metadata for datasets
+    dataset = {
+        'version': settings['ALOS2_INGEST_VERSION'],
+        'label': metadata['prod_name'],
+        'starttime': datetime.datetime.strptime(metadata['alos2md']['img_scenestartdatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f"),
+        'endtime': datetime.datetime.strptime(metadata['alos2md']['img_sceneenddatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f")
+    }
+    dataset['location'] = metadata['location']
+
+    return dataset
+
 
 def ingest_alos2(download_url, file_type, oauth_url=None):
     """Download file, push to repo and submit job for extraction."""
@@ -159,96 +207,14 @@ def ingest_alos2(download_url, file_type, oauth_url=None):
         raise
 
     # met.json
-    # extract information from summary see: https://www.eorc.jaxa.jp/ALOS-2/en/doc/fdata/PALSAR-2_xx_Format_GeoTIFF_E_r.pdf
-    #TODO: Some of these are hardcoded! Do we need them?
-    metadata = {}
-
-    # open summary.txt to extract metadata
     alos2_md_file = os.path.join(product_dir, "summary.txt")
-    logging.info("Extracting metadata from %s" % alos2_md_file)
-    dummy_section = "summary"
-    with open(alos2_md_file, 'r') as f:
-        # need to add dummy section for config parse to read .properties file
-        summary_string = '[%s]\n' % dummy_section + f.read()
-    summary_string = summary_string.replace('"', '')
-    buf = StringIO.StringIO(summary_string)
-    config = ConfigParser.ConfigParser()
-    config.readfp(buf)
+    metadata = create_metadata(alos2_md_file, download_url)
 
-    # parse the metadata from summary.txt
-    alos2md = {}
-    for name, value in config.items(dummy_section):
-        alos2md[name] = value
-
-    metadata['alos2md'] = alos2md
-
-    # facetview filters
-    dataset_name = metadata['alos2md']['scs_sceneid'] + "_" + metadata['alos2md']['pds_productid']
-    metadata['prod_name'] = dataset_name
-    metadata['spacecraftName'] = dataset_name[0:5]
-    metadata['dataset_type'] = dataset_name[0:5]
-    metadata['orbitNumber'] = int(dataset_name[5:10])
-    metadata['scene_frame_number'] = int(dataset_name[10:14])
-    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
-    prod_date = prod_datetime.strftime("%Y-%m-%d")
-    metadata['prod_date'] = prod_date
-
-    # TODO: not sure if this is the right way to expose this in Facet Filters, using CSK's metadata structure
-    dfdn = {"AcquistionMode":  dataset_name[22:25],
-            "LookSide": dataset_name[25]}
-    metadata['dfdn'] = dfdn
-
-    metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
-    metadata['level'] = "L" + dataset_name[26:29]
-    metadata['processingOption'] = dataset_name[29]
-    metadata['mapProjection'] = dataset_name[30]
-    metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
-
-    # others
-    metadata['dataset'] = "ALOS2_GeoTIFF"
-    metadata['download_url'] = download_url
-    metadata['source'] = "jaxa"
-    location = {}
-    location['type'] = 'Polygon'
-    location['coordinates'] = [[
-        [float(metadata['alos2md']['img_imagescenelefttoplongitude']), float(metadata['alos2md']['img_imagescenelefttoplatitude'])],
-        [float(metadata['alos2md']['img_imagescenerighttoplongitude']), float(metadata['alos2md']['img_imagescenerighttoplatitude'])],
-        [float(metadata['alos2md']['img_imagescenerightbottomlongitude']), float(metadata['alos2md']['img_imagescenerightbottomlatitude'])],
-        [float(metadata['alos2md']['img_imagesceneleftbottomlongitude']), float(metadata['alos2md']['img_imagesceneleftbottomlatitude'])],
-        [float(metadata['alos2md']['img_imagescenelefttoplongitude']), float(metadata['alos2md']['img_imagescenelefttoplatitude'])]
-
-    ]]
-    metadata['spatial_extent'] = location
-
-    # Add metadata from context.json
-    # load prod_met as string
-    logging.info("Extracting metadata from _context.json")
-    j = json.loads(open("_context.json", "r").read())
-    prod_met = json.dumps(j["prod_met"])
-    if prod_met is not None:
-        prod_met = json.loads(prod_met)
-        if prod_met:
-            metadata.update(prod_met)
-
-    # get settings for dataset version
-    settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                 'settings.json')
-    if not os.path.exists(settings_file):
-        settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                     'settings.json.tmpl')
-    settings = json.load(open(settings_file))
-
-    # datasets.json
-    # extract metadata for datasets
-    dataset = {
-        'version': settings['ALOS2_INGEST_VERSION'],
-        'label': dataset_name,
-        'starttime': datetime.datetime.strptime(metadata['alos2md']['img_scenestartdatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f"),
-        'endtime': datetime.datetime.strptime(metadata['alos2md']['img_sceneenddatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f")
-    }
-    dataset['location'] = location
+    # dataset.json
+    dataset = create_dataset(metadata)
 
     # Create the product directory
+    dataset_name = metadata['prod_name']
     proddir = os.path.join(".", dataset_name)
     os.makedirs(proddir)
     # move all files forward
