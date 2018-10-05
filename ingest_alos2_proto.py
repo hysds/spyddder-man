@@ -119,22 +119,23 @@ def exists(url):
         raise NotImplementedError("Failed to check existence of %s url." % \
                                   parsed_url.scheme)
 
+def download(download_url, dest, oauth_url):
+    # download
+    logging.info("Downloading %s to %s." % (download_url, dest))
+    try:
+        osaka.main.get(download_url, dest, params={"oauth": oauth_url}, measure=True, output="./pge_metrics.json")
+    except Exception, e:
+        tb = traceback.format_exc()
+        logging.error("Failed to download %s to %s: %s" % (download_url,
+                                                           dest, tb))
+        raise
 
-def sling(download_url, file_type, prod_met=None, oauth_url=None):
+def ingest_alos2(download_url, file_type, prod_met=None, oauth_url=None):
     """Download file, push to repo and submit job for extraction."""
 
     # get filename
     pri_zip_path = os.path.basename(download_url)
-
-    # download
-    logging.info("Downloading %s to %s." % (download_url, pri_zip_path))
-    try:
-        osaka.main.get(download_url, pri_zip_path, params={"oauth": oauth_url}, measure=True, output="./pge_metrics.json")
-    except Exception, e:
-        tb = traceback.format_exc()
-        logging.error("Failed to download %s to %s: %s" % (download_url,
-                                                           pri_zip_path, tb))
-        raise
+    download(download_url, pri_zip_path, oauth_url)
 
     # verify downloaded file was not corrupted
     logging.info("Verifying %s is file type %s." % (pri_zip_path, file_type))
@@ -151,9 +152,6 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         verify(sec_zip_file[0], file_type)
         product_dir = extract(sec_zip_file[0])
 
-        # get kml filename to extract dataset details
-        dataset_name = os.path.splitext(os.path.basename(glob.glob(os.path.join(product_dir, '*.kml'))[0]))[0]
-
     except Exception, e:
         tb = traceback.format_exc()
         logging.error("Failed to verify and extract files of type %s: %s" % \
@@ -161,37 +159,11 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
         raise
 
     # met.json
-    # use dataset_name to grab metadata
-    # extract information from filename see: https://www.eorc.jaxa.jp/ALOS-2/en/doc/fdata/PALSAR-2_xx_Format_GeoTIFF_E_r.pdf
+    # extract information from summary see: https://www.eorc.jaxa.jp/ALOS-2/en/doc/fdata/PALSAR-2_xx_Format_GeoTIFF_E_r.pdf
     #TODO: Some of these are hardcoded! Do we need them?
     metadata = {}
 
-    # facetview filters
-    metadata['spacecraftName'] = dataset_name[0:5]
-    metadata['dataset_type'] = dataset_name[0:5]
-    metadata['orbitNumber'] = int(dataset_name[5:10])
-    metadata['scene_frame_number'] = int(dataset_name[10:14])
-
-    # TODO: not sure if this is the right way to expose this in Facet Filters, using CSK's metadata structure
-    dfdn = {"AcquistionMode":  dataset_name[22:25],
-            "LookSide": dataset_name[25]}
-    metadata['dfdn'] = dfdn
-    metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
-    metadata['level'] = "L" + dataset_name[26:29]
-    metadata['processingOption'] = dataset_name[29]
-    metadata['mapProjection'] = dataset_name[30]
-    metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
-
-    # others
-    metadata['prod_name'] = dataset_name
-    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
-    prod_date = prod_datetime.strftime("%Y-%m-%d")
-    metadata['prod_date'] = prod_date
-    metadata['dataset'] = "ALOS2_GeoTIFF"
-    metadata['download_url'] = download_url
-    metadata['source'] = "jaxa"
-
-    # open summary.txt to extract moar metadata
+    # open summary.txt to extract metadata
     dummy_section = "summary"
     with open(os.path.join(product_dir, "summary.txt"), 'r') as f:
         # need to add dummy section for config parse to read .properties file
@@ -208,6 +180,32 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
 
     metadata['alos2md'] = alos2md
 
+    # facetview filters
+    dataset_name = metadata['alos2md']['scs_sceneid'] + "_" + metadata['alos2md']['pds_productid']
+    metadata['prod_name'] = dataset_name
+    metadata['spacecraftName'] = dataset_name[0:5]
+    metadata['dataset_type'] = dataset_name[0:5]
+    metadata['orbitNumber'] = int(dataset_name[5:10])
+    metadata['scene_frame_number'] = int(dataset_name[10:14])
+    prod_datetime = datetime.datetime.strptime(dataset_name[15:21], '%y%m%d')
+    prod_date = prod_datetime.strftime("%Y-%m-%d")
+    metadata['prod_date'] = prod_date
+
+    # TODO: not sure if this is the right way to expose this in Facet Filters, using CSK's metadata structure
+    dfdn = {"AcquistionMode":  dataset_name[22:25],
+            "LookSide": dataset_name[25]}
+    metadata['dfdn'] = dfdn
+
+    metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
+    metadata['level'] = "L" + dataset_name[26:29]
+    metadata['processingOption'] = dataset_name[29]
+    metadata['mapProjection'] = dataset_name[30]
+    metadata['direction'] = "ascending" if dataset_name[31] is "A" else "descending"
+
+    # others
+    metadata['dataset'] = "ALOS2_GeoTIFF"
+    metadata['download_url'] = download_url
+    metadata['source'] = "jaxa"
     location = {}
     location['type'] = 'Polygon'
     location['coordinates'] = [[
@@ -282,7 +280,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        sling(args.download_url, args.file_type, oauth_url=args.oauth_url)
+        ingest_alos2(args.download_url, args.file_type, oauth_url=args.oauth_url)
     except Exception as e:
         with open('_alt_error.txt', 'a') as f:
             f.write("%s\n" % str(e))
