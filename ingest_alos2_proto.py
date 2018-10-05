@@ -130,7 +130,7 @@ def download(download_url, dest, oauth_url):
                                                            dest, tb))
         raise
 
-def ingest_alos2(download_url, file_type, prod_met=None, oauth_url=None):
+def ingest_alos2(download_url, file_type, oauth_url=None):
     """Download file, push to repo and submit job for extraction."""
 
     # get filename
@@ -164,8 +164,10 @@ def ingest_alos2(download_url, file_type, prod_met=None, oauth_url=None):
     metadata = {}
 
     # open summary.txt to extract metadata
+    alos2_md_file = os.path.join(product_dir, "summary.txt")
+    logging.info("Extracting metadata from %s" % alos2_md_file)
     dummy_section = "summary"
-    with open(os.path.join(product_dir, "summary.txt"), 'r') as f:
+    with open(alos2_md_file, 'r') as f:
         # need to add dummy section for config parse to read .properties file
         summary_string = '[%s]\n' % dummy_section + f.read()
     summary_string = summary_string.replace('"', '')
@@ -219,6 +221,10 @@ def ingest_alos2(download_url, file_type, prod_met=None, oauth_url=None):
     metadata['spatial_extent'] = location
 
     # Add metadata from context.json
+    # load prod_met as string
+    logging.info("Extracting metadata from _context.json")
+    j = json.loads(open("_context.json", "r").read())
+    prod_met = json.dumps(j["prod_met"])
     if prod_met is not None:
         prod_met = json.loads(prod_met)
         if prod_met:
@@ -237,8 +243,8 @@ def ingest_alos2(download_url, file_type, prod_met=None, oauth_url=None):
     dataset = {
         'version': settings['ALOS2_INGEST_VERSION'],
         'label': dataset_name,
-        'starttime': datetime.datetime.strptime(metadata['img_scenestartdatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f"),
-        'endtime': datetime.datetime.strptime(metadata['img_sceneenddatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f")
+        'starttime': datetime.datetime.strptime(metadata['alos2md']['img_scenestartdatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f"),
+        'endtime': datetime.datetime.strptime(metadata['alos2md']['img_sceneenddatetime'], '%Y%m%d %H:%M:%S.%f').strftime("%Y-%m-%dT%H:%M:%S.%f")
     }
     dataset['location'] = location
 
