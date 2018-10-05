@@ -10,7 +10,7 @@ HTTP/HTTPS, FTP and OAuth authentication is handled using .netrc.
 """
 
 import datetime, os, sys, re, requests, json, logging, traceback, argparse, shutil, glob
-import tarfile, zipfile
+import zipfile
 from urlparse import urlparse
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.packages.urllib3.exceptions import InsecurePlatformWarning
@@ -123,28 +123,8 @@ def exists(url):
 def sling(download_url, file_type, prod_met=None, oauth_url=None):
     """Download file, push to repo and submit job for extraction."""
 
-    # log force flags
-    # logging.info("force: %s; force_extract: %s" % (force, force_extract))
-
-    # get localize_url
-    # if repo_url.startswith('dav'):
-    #     localize_url = "http%s" % repo_url[3:]
-    # else:
-    #     localize_url = repo_url
-    #
-    # # get filename
+    # get filename
     pri_zip_path = os.path.basename(download_url)
-
-    # check if localize_url already exists
-    #    is_here = exists(localize_url)
-    # is_here = False
-    #   logging.info("%s existence: %s" % (localize_url, is_here))
-
-    # do nothing if not being forced
-    #    if is_here and not force and not force_extract: return
-
-    # download from source if not here or forced
-    # if not is_here or force:
 
     # download
     logging.info("Downloading %s to %s." % (download_url, pri_zip_path))
@@ -192,7 +172,7 @@ def sling(download_url, file_type, prod_met=None, oauth_url=None):
     metadata['orbitNumber'] = int(dataset_name[5:10])
     metadata['scene_count'] = int(dataset_name[10:14])
     # TODO: not sure if this is the right way to expose this
-    dfdn = {"AcquistionMode":  dataset_name[22:25]}
+    dfdn = {"AcquisitionMode":  dataset_name[22:25]}
     metadata['dfdn'] = dfdn
     metadata['lookDirection'] = "right" if dataset_name[25] is "R" else "left"
     metadata['level'] = "L" + dataset_name[26:29]
@@ -295,42 +275,16 @@ if __name__ == "__main__":
     parser.add_argument("download_url", help="download file URL " +
                                              "(credentials stored " +
                                              "in .netrc)")
-    # we do not need a repo url
-    # parser.add_argument("repo_url", help="repository file URL")
-    # parser.add_argument("prod_name", help="product name to use for " +
-    #                                       " canonical product directory")
     parser.add_argument("file_type", help="download file type to verify",
                         choices=ALL_TYPES)
-    # parser.add_argument("prod_date", help="product date to use for " +
-    #                                       " canonical product directory")
     parser.add_argument("--oauth_url", help="OAuth authentication URL " +
                                             "(credentials stored in " +
                                             ".netrc)", required=False)
 
-    # we do not have dav, this is meaningless to us
-    # group = parser.add_mutually_exclusive_group()
-    # group.add_argument("-f", "--force", help="force download from source, " +
-    #                                          "upload to repository, and " +
-    #                                          "extract-ingest job " +
-    #                                          "submission; by default, " +
-    #                                          "nothing is done if the " +
-    #                                          "repo_url exists",
-    #                    action='store_true')
-    # group.add_argument("-e", "--force_extract", help="force extract-ingest " +
-    #                                                  "job submission; if repo_url " +
-    #                                                  "exists, skip download from " +
-    #                                                  "source and use whatever is " +
-    #                                                  "at repo_url", action='store_true')
     args = parser.parse_args()
-    # load prod_met as string
-
-    # j = json.loads(open("_context.json", "r").read())
-    # prod_met = json.dumps(j["prod_met"])
 
     try:
         sling(args.download_url, args.file_type, oauth_url=args.oauth_url)
-        # sling(args.download_url, args.prod_name, args.file_type,
-        #       args.prod_date, prod_met, args.oauth_url)
     except Exception as e:
         with open('_alt_error.txt', 'a') as f:
             f.write("%s\n" % str(e))
