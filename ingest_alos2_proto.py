@@ -273,6 +273,8 @@ def ingest_alos2(download_url, file_type, oauth_url=None):
     # remove unwanted zips
     shutil.rmtree(sec_zip_dir, ignore_errors=True)
     os.remove(pri_zip_path)
+    # TODO my suspicion, remove once done.
+    os.remove(os.path.join(proddir, dataset_name + ".kml"))
 
 
 if __name__ == "__main__":
