@@ -179,7 +179,8 @@ def create_dataset(metadata):
     dataset['location'] = metadata['location']
 
     return dataset
-(
+
+
 def gdal_translate(outfile, infile, options_string):
     cmd = "gdal_translate {} {} {}".format(options_string, infile, outfile)
     return check_call(cmd,  shell=True)
