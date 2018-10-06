@@ -159,6 +159,7 @@ def create_metadata(alos2_md_file, download_url):
 
 
 def create_dataset(metadata):
+    logging.info("Extracting datasets from metadata")
     # get settings for dataset version
     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                  'settings.json')
@@ -182,6 +183,7 @@ def create_dataset(metadata):
 
 def create_product_browse(tiff_file):
     # TODO: the static scale of 7500 has been chosen! We need better means to scale it.
+    logging.info("Creating browse png from %s" % tiff_file)
     options_string = '-of PNG -ot Byte -scale 0 7500 0 255 -outsize 10% 10%'
     out_file = os.path.splitext(tiff_file)[0] + '.browse.png'
     gdal.Translate(out_file, tiff_file, options=options_string)
@@ -189,6 +191,7 @@ def create_product_browse(tiff_file):
 
 def create_product_kmz(tiff_file, dataset_name):
     # TODO: the static scale of 7500 has been chosen! We need better means to scale it.
+    logging.info("Creating KMZ from %s" % tiff_file)
     options_string = '-of KMLSUPEROVERLAY -ot Byte -scale 0 7500 0 255'
     out_file = dataset_name + ".kmz"
     gdal.Translate(out_file, tiff_file, options=options_string)
@@ -250,7 +253,7 @@ def ingest_alos2(download_url, file_type, oauth_url=None):
         f.close()
 
     # create browse products
-    tiff_files = glob.glob("*.tif")
+    tiff_files = glob.glob(os.path.join(proddir, "*.tif"))
     for tif_file in tiff_files:
         create_product_browse(tif_file)
 
