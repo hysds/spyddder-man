@@ -29,7 +29,7 @@ from hysds.celery import app
 from hysds.dataset_ingest import ingest
 from hysds_commons.job_rest_utils import single_process_and_submission
 
-from osgeo import gdal
+from subprocess import check_call
 
 # disable warnings for SSL verification
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -179,6 +179,10 @@ def create_dataset(metadata):
     dataset['location'] = metadata['location']
 
     return dataset
+(
+def gdal_translate(outfile, infile, options_string):
+    cmd = "gdal_translate {} {} {}".format(options_string, infile, outfile)
+    return check_call(cmd,  shell=True)
 
 
 def create_product_browse(tiff_file):
@@ -186,15 +190,16 @@ def create_product_browse(tiff_file):
     logging.info("Creating browse png from %s" % tiff_file)
     options_string = '-of PNG -ot Byte -scale 0 7500 0 255 -outsize 10% 10%'
     out_file = os.path.splitext(tiff_file)[0] + '.browse.png'
-    gdal.Translate(out_file, tiff_file, options=options_string)
+    gdal_translate(out_file, tiff_file, options_string)
     return
 
 def create_product_kmz(tiff_file, dataset_name):
     # TODO: the static scale of 7500 has been chosen! We need better means to scale it.
     logging.info("Creating KMZ from %s" % tiff_file)
+
     options_string = '-of KMLSUPEROVERLAY -ot Byte -scale 0 7500 0 255'
     out_file = dataset_name + ".kmz"
-    gdal.Translate(out_file, tiff_file, options=options_string)
+    gdal_translate(out_file, tiff_file, options_string)
     return
 
 
