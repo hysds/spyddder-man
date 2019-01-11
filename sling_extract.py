@@ -134,7 +134,7 @@ if __name__ == "__main__":
         logging.info("localize_url : %s \nfile : %s" %(localize_url, args.file))
         try:
             logging.info("calling osaka")
-            osaka.main.get(localize_url, args.file)
+            osaka.main.get(localize_url, os.getcwd)
             logging.info("calling osaka successful")
         except:
             logging.info("calling osaka failed. sleeping ..")
@@ -144,8 +144,8 @@ if __name__ == "__main__":
             logging.info("calling osaka successful")
          
         #Corrects input dataset to input file, if supplied input dataset 
-        if os.path.isdir(args.file):
-             shutil.move(os.path.join(args.file,args.file),"./tmp")
+        if os.path.isdir(filename):
+             shutil.move(os.path.join(filename,args.file),"./tmp")
              shutil.rmtree(args.file)
              shutil.move("./tmp",args.file)
         else:
