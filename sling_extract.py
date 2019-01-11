@@ -131,7 +131,7 @@ if __name__ == "__main__":
     localize_url = args.localize_url
     try:
         filename, file_extension = os.path.splitext(args.file)
-        logging.info("localize_url : %s \nfile : %s" %(localize_url, url))
+        logging.info("localize_url : %s \nfile : %s" %(localize_url, args.file))
         try:
             logging.info("calling osaka")
             osaka.main.get(localize_url, args.file)
