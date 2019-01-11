@@ -8,6 +8,7 @@ for the product in datasets JSON config.
 
 import os, sys, re, json, shutil, logging, traceback, argparse
 from subprocess import check_output
+import time
 
 from hysds.recognize import Recognizer
 import osaka.main
@@ -129,16 +130,25 @@ if __name__ == "__main__":
     args = parser.parse_args()
     try:
         filename, file_extension = os.path.splitext(args.file)
+        logging.info("localize_url : %s \nfile : %s" %(localize_url, url))
         try:
+            logging.info("calling osaka")
             osaka.main.get(localize_url, args.file)
+            logging.info("calling osaka successful")
         except:
+            logging.info("calling osaka failed. sleeping ..")
+            time.sleep(100)
+            logging.info("calling osaka again")
             osaka.main.get(localize_url, args.file)
+            logging.info("calling osaka successful")
          
         #Corrects input dataset to input file, if supplied input dataset 
         if os.path.isdir(args.file):
              shutil.move(os.path.join(args.file,args.file),"./tmp")
              shutil.rmtree(args.file)
              shutil.move("./tmp",args.file)
+        else:
+            logging.info("%s Dir NOT Found" %args.file)
         create_product(args.file, args.prod_name, args.prod_date)
     except Exception as e:
         with open('_alt_error.txt', 'a') as f:
