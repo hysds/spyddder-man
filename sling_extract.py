@@ -144,12 +144,13 @@ if __name__ == "__main__":
             logging.info("calling osaka successful")
          
         #Corrects input dataset to input file, if supplied input dataset 
-        if os.path.isdir(filename):
-             shutil.move(os.path.join(filename,args.file),"./tmp")
-             shutil.rmtree(args.file)
+        filedir = os.path.join(os.getcwd(), filename)
+        if os.path.isdir(filedir):
+             shutil.move(os.path.join(filedir, args.file),"./tmp")
+             shutil.rmtree(filedir)
              shutil.move("./tmp",args.file)
         else:
-            logging.info("%s Dir NOT Found" %args.file)
+            logging.info("%s Dir NOT Found" %filename)
         create_product(args.file, args.prod_name, args.prod_date)
     except Exception as e:
         with open('_alt_error.txt', 'a') as f:
