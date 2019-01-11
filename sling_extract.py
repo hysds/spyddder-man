@@ -134,7 +134,7 @@ if __name__ == "__main__":
         logging.info("localize_url : %s \nfile : %s" %(localize_url, args.file))
         try:
             logging.info("calling osaka")
-            osaka.main.get(localize_url, os.getcwd)
+            osaka.main.get(localize_url, os.getcwdi())
             logging.info("calling osaka successful")
         except:
             logging.info("calling osaka failed. sleeping ..")
