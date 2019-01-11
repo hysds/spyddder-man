@@ -128,6 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("prod_date", help="product date to use for " +
                                           " canonical product directory")
     args = parser.parse_args()
+    localize_url = args.localize_url
     try:
         filename, file_extension = os.path.splitext(args.file)
         logging.info("localize_url : %s \nfile : %s" %(localize_url, url))
