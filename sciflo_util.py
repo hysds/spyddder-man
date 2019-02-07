@@ -63,10 +63,10 @@ def run_sciflo(sfl_file, sfl_args):
 
     # execute sciflo
     cmd = [sflexec_path, "-s", "-f", "-o", "output", "--args", '"%s"' % ','.join(sfl_args), sfl_file]
-    print("Running sflExec.py command:\n%s" % ' '.join(cmd))
+    print(("Running sflExec.py command:\n%s" % ' '.join(cmd)))
     #check_call(cmd, shell)
     status = os.system(' '.join(cmd))
-    print("Exit status is: %d" % status)
+    print(("Exit status is: %d" % status))
     if status != 0:
         extract_error('output/sciflo.json')
         status = 1

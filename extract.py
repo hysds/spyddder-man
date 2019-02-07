@@ -99,7 +99,7 @@ def create_product(file, prod_name, prod_date):
 
     # create product directory and move product file in it
     prod_path = os.path.abspath(prod_name)
-    os.makedirs(prod_path, 0775)
+    os.makedirs(prod_path, 0o775)
     shutil.move(file, os.path.join(prod_path, file))
 
     # copy _context.json if it exists

@@ -50,9 +50,9 @@ def dataset_exists(id, index_suffix):
         result = r.json()
         total = result['hits']['total']
     else:
-        print("Failed to query %s:\n%s" % (es_url, r.text))
-        print("query: %s" % json.dumps(query, indent=2))
-        print("returned: %s" % r.text)
+        print(("Failed to query %s:\n%s" % (es_url, r.text)))
+        print(("query: %s" % json.dumps(query, indent=2)))
+        print(("returned: %s" % r.text))
         if r.status_code == 404: total = 0
         else: r.raise_for_status()
     return False if total == 0 else True
@@ -316,7 +316,7 @@ def resolve_aoi_acqs(ctx_file):
         try:
             ( spyddder_extract_version, queue, url, archive_filename, 
               identifier, prod_date, priority, aoi ) = resolve_source(acq)
-        except DatasetExists, e:
+        except DatasetExists as e:
             logger.warning(e)
             logger.warning("Skipping {}".format(acq['identifier']))
             continue
@@ -360,6 +360,6 @@ def extract_job(spyddder_extract_version, queue, localize_url, file, prod_name,
     # add workflow info
     job['payload']['_sciflo_wuid'] = wuid
     job['payload']['_sciflo_job_num'] = job_num
-    print("job: {}".format(json.dumps(job, indent=2)))
+    print(("job: {}".format(json.dumps(job, indent=2))))
 
     return job

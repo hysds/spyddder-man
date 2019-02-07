@@ -11,7 +11,7 @@ HTTP/HTTPS, FTP and OAuth authentication is handled using .netrc.
 
 import os, sys, re, requests, json, logging, traceback, argparse, shutil
 import tarfile, zipfile
-from urlparse import urlparse
+from urllib.parse import urlparse
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.packages.urllib3.exceptions import InsecurePlatformWarning
 
@@ -92,7 +92,7 @@ def exists(url):
     elif parsed_url.scheme in ('s3', 's3s'):
         s3_eps = boto.regioninfo.load_regions()['s3']
         region = None
-        for r, e in s3_eps.iteritems():
+        for r, e in s3_eps.items():
             if re.search(e, parsed_url.netloc):
                 region = r 
                 break
@@ -109,7 +109,7 @@ def exists(url):
         bn, kn = match.groups()
         try:
             bucket = conn.get_bucket(bn)
-        except boto.exception.S3ResponseError, e:
+        except boto.exception.S3ResponseError as e:
             if e.status == 404: return False
             else: raise
         key = bucket.get_key(kn)
@@ -149,7 +149,7 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
         # download
         logging.info("Downloading %s to %s." % (download_url, path))
         try: osaka.main.get(download_url, path, params={ "oauth": oauth_url },measure=True,output="./pge_metrics.json")
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc()
             logging.error("Failed to download %s to %s: %s" % (download_url,
                                                                path, tb))
@@ -158,7 +158,7 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
         # verify downloaded file was not corrupted
         logging.info("Verifying %s is file type %s." % (path, file_type))
         try: verify(path, file_type)
-        except Exception, e:
+        except Exception as e:
             tb = traceback.format_exc()
             logging.error("Failed to verify %s is file type %s: %s" % \
                           (path, file_type, tb))
