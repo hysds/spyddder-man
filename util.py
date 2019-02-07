@@ -1,5 +1,10 @@
-#!/usr/bin/env python 
-import os, sys, time, json, requests, logging
+#!/usr/bin/env python
+import os
+import sys
+import time
+import json
+import requests
+import logging
 
 from hysds_commons.job_utils import resolve_hysds_job
 from hysds.celery import app
@@ -9,10 +14,13 @@ from hysds.celery import app
 log_format = "[%(asctime)s: %(levelname)s/%(name)s/%(funcName)s] %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO)
 
+
 class LogFilter(logging.Filter):
     def filter(self, record):
-        if not hasattr(record, 'id'): record.id = '--'
+        if not hasattr(record, 'id'):
+            record.id = '--'
         return True
+
 
 logger = logging.getLogger(os.path.splitext(os.path.basename(__file__))[0])
 logger.setLevel(logging.INFO)
@@ -28,13 +36,13 @@ def dataset_exists(id, index_suffix):
     # es_url and es_index
     es_url = app.conf.GRQ_ES_URL
     es_index = "grq_*_{}".format(index_suffix.lower())
-    
+
     # query
     query = {
-        "query":{
-            "bool":{
-                "must":[
-                    { "term":{ "_id": id } },
+        "query": {
+            "bool": {
+                "must": [
+                    {"term": {"_id": id}},
                 ]
             }
         },
@@ -53,8 +61,10 @@ def dataset_exists(id, index_suffix):
         print(("Failed to query %s:\n%s" % (es_url, r.text)))
         print(("query: %s" % json.dumps(query, indent=2)))
         print(("returned: %s" % r.text))
-        if r.status_code == 404: total = 0
-        else: r.raise_for_status()
+        if r.status_code == 404:
+            total = 0
+        else:
+            r.raise_for_status()
     return False if total == 0 else True
 
 
@@ -63,7 +73,8 @@ def query_es(query, es_index):
 
     es_url = app.conf.GRQ_ES_URL
     rest_url = es_url[:-1] if es_url.endswith('/') else es_url
-    url = "{}/{}/_search?search_type=scan&scroll=60&size=100".format(rest_url, es_index)
+    url = "{}/{}/_search?search_type=scan&scroll=60&size=100".format(
+        rest_url, es_index)
     #logger.info("url: {}".format(url))
     r = requests.post(url, data=json.dumps(query))
     r.raise_for_status()
@@ -73,10 +84,12 @@ def query_es(query, es_index):
     scroll_id = scan_result['_scroll_id']
     hits = []
     while True:
-        r = requests.post('%s/_search/scroll?scroll=60m' % rest_url, data=scroll_id)
+        r = requests.post('%s/_search/scroll?scroll=60m' %
+                          rest_url, data=scroll_id)
         res = r.json()
         scroll_id = res['_scroll_id']
-        if len(res['hits']['hits']) == 0: break
+        if len(res['hits']['hits']) == 0:
+            break
         hits.extend(res['hits']['hits'])
     return hits
 
@@ -144,16 +157,16 @@ def query_aois(starttime, endtime):
                 ]
             }
         },
-        "partial_fields" : {
-            "partial" : {
-                "include" : [ "id", "starttime", "endtime", "location", 
-                              "metadata.user_tags", "metadata.priority" ]
+        "partial_fields": {
+            "partial": {
+                "include": ["id", "starttime", "endtime", "location",
+                            "metadata.user_tags", "metadata.priority"]
             }
         }
     }
 
     # filter inactive
-    hits = [i['fields']['partial'][0] for i in query_es(query, es_index) 
+    hits = [i['fields']['partial'][0] for i in query_es(query, es_index)
             if 'inactive' not in i['fields']['partial'][0].get('metadata', {}).get('user_tags', [])]
     #logger.info("hits: {}".format(json.dumps(hits, indent=2)))
     logger.info("aois: {}".format(json.dumps([i['id'] for i in hits])))
@@ -202,7 +215,7 @@ def query_aoi_acquisitions(starttime, endtime, platform):
                         }
                     },
                     "filter": {
-                        "geo_shape": {  
+                        "geo_shape": {
                             "location": {
                                 "shape": aoi['location']
                             }
@@ -210,15 +223,15 @@ def query_aoi_acquisitions(starttime, endtime, platform):
                     }
                 }
             },
-            "partial_fields" : {
-                "partial" : {
-                    "include" : [ "id", "dataset_type", "dataset", "metadata" ]
+            "partial_fields": {
+                "partial": {
+                    "include": ["id", "dataset_type", "dataset", "metadata"]
                 }
             }
         }
         acqs = [i['fields']['partial'][0] for i in query_es(query, es_index)]
         logger.info("Found {} acqs for {}: {}".format(len(acqs), aoi['id'],
-                    json.dumps([i['id'] for i in acqs], indent=2)))
+                                                      json.dumps([i['id'] for i in acqs], indent=2)))
         for acq in acqs:
             aoi_priority = aoi.get('metadata', {}).get('priority', 0)
             # ensure highest priority is assigned if multiple AOIs resolve the acquisition
@@ -227,15 +240,17 @@ def query_aoi_acquisitions(starttime, endtime, platform):
             acq['aoi'] = aoi['id']
             acq['priority'] = aoi_priority
             acq_info[acq['id']] = acq
-    logger.info("Acquistions to localize: {}".format(json.dumps(acq_info, indent=2)))
+    logger.info("Acquistions to localize: {}".format(
+        json.dumps(acq_info, indent=2)))
     return acq_info
-    
+
 
 def resolve_s1_slc(identifier, download_url, project):
     """Resolve S1 SLC using ASF datapool (ASF or NGAP). Fallback to ESA."""
 
     # determine best url and corresponding queue
-    vertex_url = "https://datapool.asf.alaska.edu/SLC/SA/{}.zip".format(identifier)
+    vertex_url = "https://datapool.asf.alaska.edu/SLC/SA/{}.zip".format(
+        identifier)
     r = requests.head(vertex_url, allow_redirects=True)
     if r.status_code == 403:
         url = r.url
@@ -244,7 +259,8 @@ def resolve_s1_slc(identifier, download_url, project):
         url = download_url
         queue = "factotum-job_worker-scihub_throttled"
     else:
-        raise RuntimeError("Got status code {} from {}: {}".format(r.status_code, vertex_url, r.url))
+        raise RuntimeError("Got status code {} from {}: {}".format(
+            r.status_code, vertex_url, r.url))
     return url, queue
 
 
@@ -257,25 +273,31 @@ def resolve_source(ctx):
     """Resolve best URL from acquisition."""
 
     # get settings
-    settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'settings.json')
+    settings_file = os.path.join(os.path.dirname(
+        os.path.realpath(__file__)), 'settings.json')
     with open(settings_file) as f:
         settings = json.load(f)
 
     # ensure acquisition
     if ctx['dataset_type'] != "acquisition":
-        raise RuntimeError("Invalid dataset type: {}".format(ctx['dataset_type']))
+        raise RuntimeError(
+            "Invalid dataset type: {}".format(ctx['dataset_type']))
 
     # route resolver and return url and queue
     if ctx['dataset'] == "acquisition-S1-IW_SLC":
         if dataset_exists(ctx['identifier'], settings['ACQ_TO_DSET_MAP'][ctx['dataset']]):
-            raise DatasetExists("Dataset {} already exists.".format(ctx['identifier']))
-        url, queue = resolve_s1_slc(ctx['identifier'], ctx['download_url'], ctx['project'])
+            raise DatasetExists(
+                "Dataset {} already exists.".format(ctx['identifier']))
+        url, queue = resolve_s1_slc(
+            ctx['identifier'], ctx['download_url'], ctx['project'])
     else:
-        raise NotImplementedError("Unknown acquisition dataset: {}".format(ctx['dataset']))
+        raise NotImplementedError(
+            "Unknown acquisition dataset: {}".format(ctx['dataset']))
 
-    return ( ctx['spyddder_extract_version'], queue, url, ctx['archive_filename'], 
-             ctx['identifier'], time.strftime('%Y-%m-%d' ), ctx.get('job_priority', 0),
-             ctx.get('aoi', 'no_aoi') )
+    return (ctx['spyddder_extract_version'], queue, url, ctx['archive_filename'],
+            ctx['identifier'], time.strftime(
+                '%Y-%m-%d'), ctx.get('job_priority', 0),
+            ctx.get('aoi', 'no_aoi'))
 
 
 def resolve_source_from_ctx_file(ctx_file):
@@ -293,7 +315,8 @@ def resolve_aoi_acqs(ctx_file):
         ctx = json.load(f)
 
     # get acq_info
-    acq_info = query_aoi_acquisitions(ctx['starttime'], ctx['endtime'], ctx['platform'])
+    acq_info = query_aoi_acquisitions(
+        ctx['starttime'], ctx['endtime'], ctx['platform'])
 
     # build args
     spyddder_extract_versions = []
@@ -314,8 +337,8 @@ def resolve_aoi_acqs(ctx_file):
         acq['aoi'] = acq['aoi']
         acq['job_priority'] = acq['priority']
         try:
-            ( spyddder_extract_version, queue, url, archive_filename, 
-              identifier, prod_date, priority, aoi ) = resolve_source(acq)
+            (spyddder_extract_version, queue, url, archive_filename,
+             identifier, prod_date, priority, aoi) = resolve_source(acq)
         except DatasetExists as e:
             logger.warning(e)
             logger.warning("Skipping {}".format(acq['identifier']))
@@ -328,8 +351,8 @@ def resolve_aoi_acqs(ctx_file):
         prod_dates.append(prod_date)
         priorities.append(priority)
         aois.append(aoi)
-    return ( spyddder_extract_versions, queues, urls, archive_filenames,
-             identifiers, prod_dates, priorities, aois )
+    return (spyddder_extract_versions, queues, urls, archive_filenames,
+            identifiers, prod_dates, priorities, aois)
 
 
 def extract_job(spyddder_extract_version, queue, localize_url, file, prod_name,
@@ -350,7 +373,7 @@ def extract_job(spyddder_extract_version, queue, localize_url, file, prod_name,
         "prod_date": prod_date,
         "aoi": aoi,
     }
-    job = resolve_hysds_job(job_type, queue, priority=priority, params=params, 
+    job = resolve_hysds_job(job_type, queue, priority=priority, params=params,
                             job_name="%s-%s-%s" % (job_type, aoi, prod_name))
 
     # save to archive_filename if it doesn't match url basename

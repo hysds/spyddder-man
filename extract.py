@@ -6,7 +6,14 @@ the product and leveraging the configured metadata extractor defined
 for the product in datasets JSON config.
 """
 
-import os, sys, re, json, shutil, logging, traceback, argparse
+import os
+import sys
+import re
+import json
+import shutil
+import logging
+import traceback
+import argparse
 from subprocess import check_output
 
 from hysds.recognize import Recognizer
@@ -26,25 +33,27 @@ def run_extractor(dsets_file, prod_path, ctx):
     logging.info("prod_path: %s" % prod_path)
     # get settings
     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                 'settings.json')
+                                 'settings.json')
     settings = json.load(open(settings_file))
 
     # recognize
-    r = Recognizer(dsets_file, prod_path,os.path.basename(prod_path),settings["EXTRACT_VERSION"])
+    r = Recognizer(dsets_file, prod_path, os.path.basename(
+        prod_path), settings["EXTRACT_VERSION"])
     objectid = r.getId()
 
     # get extractor
     extractor = r.getMetadataExtractor()
     if extractor is not None:
         match = SCRIPT_RE.search(extractor)
-        if match: extractor = match.group(1)
+        if match:
+            extractor = match.group(1)
     logging.info("Configured metadata extractor: %s" % extractor)
 
     # metadata file
-    metadata_file = os.path.join(prod_path, '%s.met.json' % \
+    metadata_file = os.path.join(prod_path, '%s.met.json' %
                                  os.path.basename(prod_path))
-    dataset_file = os.path.join(prod_path, '%s.dataset.json' % \
-                                 os.path.basename(prod_path))
+    dataset_file = os.path.join(prod_path, '%s.dataset.json' %
+                                os.path.basename(prod_path))
 
     # load metadata
     metadata = {}
@@ -57,15 +66,15 @@ def run_extractor(dsets_file, prod_path, ctx):
     if extractor is None:
         logging.info("No metadata extraction configured.")
     else:
-        logging.info("Running metadata extractor %s on %s" % \
-                    (extractor, prod_path))
+        logging.info("Running metadata extractor %s on %s" %
+                     (extractor, prod_path))
         m = check_output([extractor, prod_path])
         if os.path.exists(metadata_file):
             with open(metadata_file) as f:
                 metadata.update(json.load(f))
 
     # set data_product_name
-    metadata['data_product_name'] = objectid 
+    metadata['data_product_name'] = objectid
 
     # set download url from context
     localize_urls = ctx.get('localize_urls', [])
@@ -79,8 +88,8 @@ def run_extractor(dsets_file, prod_path, ctx):
 
     # Build datasets and add in "optional" fields, if not already created by extractor
     if not os.path.exists(dataset_file):
-        datasets = {"version":settings["EXTRACT_VERSION"]}
-        for key in ["location","starttime","endtime","label"]:
+        datasets = {"version": settings["EXTRACT_VERSION"]}
+        for key in ["location", "starttime", "endtime", "label"]:
             if key in m:
                 datasets[key] = m[key]
         # write it out to file
@@ -88,13 +97,14 @@ def run_extractor(dsets_file, prod_path, ctx):
             json.dump(datasets, f, indent=2)
         logging.info("Wrote dataset to %s" % dataset_file)
 
+
 def create_product(file, prod_name, prod_date):
     """Create skeleton directory structure for product and run configured
        metadata extractor."""
 
     # get settings
     settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                 'settings.json')
+                                 'settings.json')
     settings = json.load(open(settings_file))
 
     # create product directory and move product file in it
@@ -127,11 +137,11 @@ if __name__ == "__main__":
                                           " canonical product directory")
     args = parser.parse_args()
     try:
-        #Corrects input dataset to input file, if supplied input dataset 
+        # Corrects input dataset to input file, if supplied input dataset
         if os.path.isdir(args.file):
-             shutil.move(os.path.join(args.file,args.file),"./tmp")
-             shutil.rmtree(args.file)
-             shutil.move("./tmp",args.file)
+            shutil.move(os.path.join(args.file, args.file), "./tmp")
+            shutil.rmtree(args.file)
+            shutil.move("./tmp", args.file)
         create_product(args.file, args.prod_name, args.prod_date)
     except Exception as e:
         with open('_alt_error.txt', 'a') as f:
