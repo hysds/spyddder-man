@@ -1,5 +1,8 @@
-#!/usr/bin/env python 
-import os, sys, logging, argparse
+#!/usr/bin/env python
+import os
+import sys
+import logging
+import argparse
 
 from sciflo_util import run_sciflo
 
@@ -19,7 +22,7 @@ def main(sfl_file, context_file):
     context_file = os.path.abspath(context_file)
     logger.info("sfl_file: %s" % sfl_file)
     logger.info("context_file: %s" % context_file)
-    return run_sciflo(sfl_file, [ "context_file=%s" % context_file ])
+    return run_sciflo(sfl_file, ["context_file=%s" % context_file])
 
 
 if __name__ == '__main__':

@@ -9,9 +9,18 @@ Sling data from a source to a destination:
 HTTP/HTTPS, FTP and OAuth authentication is handled using .netrc.
 """
 
-import os, sys, re, requests, json, logging, traceback, argparse, shutil
-import tarfile, zipfile
-from urlparse import urlparse
+import os
+import sys
+import re
+import requests
+import json
+import logging
+import traceback
+import argparse
+import shutil
+import tarfile
+import zipfile
+from urllib.parse import urlparse
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.packages.urllib3.exceptions import InsecurePlatformWarning
 
@@ -38,11 +47,11 @@ logging.basicConfig(format=log_format, level=logging.INFO)
 ALL_TYPES = []
 
 # zip types
-ZIP_TYPE = [ "zip" ]
+ZIP_TYPE = ["zip"]
 ALL_TYPES.extend(ZIP_TYPE)
 
 # tar types
-TAR_TYPE = [ "tbz2", "tgz", "bz2", "gz" ]
+TAR_TYPE = ["tbz2", "tgz", "bz2", "gz"]
 ALL_TYPES.extend(TAR_TYPE)
 
 
@@ -56,15 +65,15 @@ def verify(path, file_type):
             raise RuntimeError("%s is not a zipfile." % path)
         with zipfile.ZipFile(path, 'r') as f:
             f.extractall(test_dir)
-        shutil.rmtree(test_dir, ignore_errors=True) 
+        shutil.rmtree(test_dir, ignore_errors=True)
     elif file_type in TAR_TYPE:
         if not tarfile.is_tarfile(path):
             raise RuntimeError("%s is not a tarfile." % path)
         with tarfile.open(path) as f:
             f.extractall(test_dir)
-        shutil.rmtree(test_dir, ignore_errors=True) 
+        shutil.rmtree(test_dir, ignore_errors=True)
     else:
-        raise NotImplementedError("Failed to verify %s is file type %s." % \
+        raise NotImplementedError("Failed to verify %s is file type %s." %
                                   (path, file_type))
 
 
@@ -75,7 +84,7 @@ def upload(url, path):
     parsed_url = urlparse(url)
     if not osaka.main.supported(url):
         raise RuntimeError("Invalid url: %s" % url)
-    osaka.main.put(path, url,measure=True,output="./pge_metrics.json")
+    osaka.main.put(path, url, measure=True, output="./pge_metrics.json")
 
 
 def exists(url):
@@ -86,39 +95,46 @@ def exists(url):
         raise RuntimeError("Invalid url: %s" % url)
     if parsed_url.scheme in ('http', 'https'):
         r = requests.head(url, verify=False)
-        if r.status_code == 200: return True
-        elif r.status_code == 404: return False
-        else: r.raise_for_status()
+        if r.status_code == 200:
+            return True
+        elif r.status_code == 404:
+            return False
+        else:
+            r.raise_for_status()
     elif parsed_url.scheme in ('s3', 's3s'):
         s3_eps = boto.regioninfo.load_regions()['s3']
         region = None
-        for r, e in s3_eps.iteritems():
+        for r, e in s3_eps.items():
             if re.search(e, parsed_url.netloc):
-                region = r 
+                region = r
                 break
         if region is None:
-            raise RuntimeError("Failed to find region for endpoint %s." % \
+            raise RuntimeError("Failed to find region for endpoint %s." %
                                parsed_url.netloc)
         conn = boto.s3.connect_to_region(region,
                                          aws_access_key_id=parsed_url.username,
                                          aws_secret_access_key=parsed_url.password)
         match = re.search(r'/(.*?)/(.*)$', parsed_url.path)
         if not match:
-            raise RuntimeError("Failed to parse bucket & key from %s." % \
+            raise RuntimeError("Failed to parse bucket & key from %s." %
                                parsed_url.path)
         bn, kn = match.groups()
         try:
             bucket = conn.get_bucket(bn)
-        except boto.exception.S3ResponseError, e:
-            if e.status == 404: return False
-            else: raise
+        except boto.exception.S3ResponseError as e:
+            if e.status == 404:
+                return False
+            else:
+                raise
         key = bucket.get_key(kn)
-        if key is None: return False
-        else: return True 
+        if key is None:
+            return False
+        else:
+            return True
     else:
-        raise NotImplementedError("Failed to check existence of %s url." % \
+        raise NotImplementedError("Failed to check existence of %s url." %
                                   parsed_url.scheme)
- 
+
 
 def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None,
           oauth_url=None, force=False, force_extract=False):
@@ -130,7 +146,8 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
     # get localize_url
     if repo_url.startswith('dav'):
         localize_url = "http%s" % repo_url[3:]
-    else: localize_url = repo_url
+    else:
+        localize_url = repo_url
 
     # get filename
     path = os.path.basename(repo_url)
@@ -148,8 +165,10 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
 
         # download
         logging.info("Downloading %s to %s." % (download_url, path))
-        try: osaka.main.get(download_url, path, params={ "oauth": oauth_url },measure=True,output="./pge_metrics.json")
-        except Exception, e:
+        try:
+            osaka.main.get(download_url, path, params={
+                           "oauth": oauth_url}, measure=True, output="./pge_metrics.json")
+        except Exception as e:
             tb = traceback.format_exc()
             logging.error("Failed to download %s to %s: %s" % (download_url,
                                                                path, tb))
@@ -157,10 +176,11 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
 
         # verify downloaded file was not corrupted
         logging.info("Verifying %s is file type %s." % (path, file_type))
-        try: verify(path, file_type)
-        except Exception, e:
+        try:
+            verify(path, file_type)
+        except Exception as e:
             tb = traceback.format_exc()
-            logging.error("Failed to verify %s is file type %s: %s" % \
+            logging.error("Failed to verify %s is file type %s: %s" %
                           (path, file_type, tb))
             raise
         # Make a product here
@@ -169,41 +189,41 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
         os.makedirs(proddir)
         shutil.move(path, proddir)
         metadata = {
-                       "download_url" : download_url,
-                       "prod_name" : prod_name,
-                       "prod_date" : prod_date,
-                       "file": os.path.basename(localize_url),
-                       "data_product_name" : os.path.basename(path),
-                       "dataset" : "incoming",
-                   }
-            
+            "download_url": download_url,
+            "prod_name": prod_name,
+            "prod_date": prod_date,
+            "file": os.path.basename(localize_url),
+            "data_product_name": os.path.basename(path),
+            "dataset": "incoming",
+        }
+
         # Add metadata from context.json
         if prod_met is not None:
-           prod_met = json.loads(prod_met)
-           if prod_met:
-             metadata.update(prod_met)
-        
+            prod_met = json.loads(prod_met)
+            if prod_met:
+                metadata.update(prod_met)
+
         # dump metadata
-        with open(os.path.join(proddir, dataset_name + ".met.json"),"w") as f:
-           json.dump(metadata,f)
-           f.close()
+        with open(os.path.join(proddir, dataset_name + ".met.json"), "w") as f:
+            json.dump(metadata, f)
+            f.close()
 
         # get settings
         settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                 'settings.json')
+                                     'settings.json')
         if not os.path.exists(settings_file):
             settings_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                 'settings.json.tmpl')
+                                         'settings.json.tmpl')
         settings = json.load(open(settings_file))
 
         # dump dataset
-        with open(os.path.join(proddir, dataset_name + ".dataset.json"),"w") as f:
-           dataset_json = { "version":settings["INCOMING_VERSION"] }
-           if 'spatial_extent' in prod_met:
-               dataset_json['location'] = prod_met['spatial_extent']
-           json.dump(dataset_json, f)
-           f.close()
-        
+        with open(os.path.join(proddir, dataset_name + ".dataset.json"), "w") as f:
+            dataset_json = {"version": settings["INCOMING_VERSION"]}
+            if 'spatial_extent' in prod_met:
+                dataset_json['location'] = prod_met['spatial_extent']
+            json.dump(dataset_json, f)
+            f.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
@@ -217,27 +237,27 @@ if __name__ == "__main__":
                         choices=ALL_TYPES)
     parser.add_argument("prod_date", help="product date to use for " +
                                           " canonical product directory")
-    #parser.add_argument("prod_met", help="context json which " +
-    #                                         "contains metadata " + 
+    # parser.add_argument("prod_met", help="context json which " +
+    #                                         "contains metadata " +
     #                                         "information for the incoming data")
     parser.add_argument("--oauth_url", help="OAuth authentication URL " +
                                             "(credentials stored in " +
                                             ".netrc)", required=False)
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-f", "--force", help="force download from source, " +
-                                              "upload to repository, and " + 
-                                              "extract-ingest job " + 
-                                              "submission; by default, " +
-                                              "nothing is done if the " +
-                                              "repo_url exists",
-                                              action='store_true')
+                       "upload to repository, and " +
+                       "extract-ingest job " +
+                       "submission; by default, " +
+                       "nothing is done if the " +
+                       "repo_url exists",
+                       action='store_true')
     group.add_argument("-e", "--force_extract", help="force extract-ingest " +
-                                              "job submission; if repo_url " +
-                                              "exists, skip download from " +
-                                              "source and use whatever is " +
-                                              "at repo_url", action='store_true')
+                       "job submission; if repo_url " +
+                       "exists, skip download from " +
+                       "source and use whatever is " +
+                       "at repo_url", action='store_true')
     args = parser.parse_args()
-    #load prod_met as string
+    # load prod_met as string
     j = json.loads(open("_context.json", "r").read())
     prod_met = json.dumps(j["prod_met"])
 
