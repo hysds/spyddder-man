@@ -6,6 +6,7 @@ the product and leveraging the configured metadata extractor defined
 for the product in datasets JSON config.
 """
 
+from builtins import str
 import os
 import sys
 import re

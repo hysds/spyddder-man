@@ -9,6 +9,7 @@ Sling data from a source to a destination:
 HTTP/HTTPS, FTP and OAuth authentication is handled using .netrc.
 """
 
+from builtins import str
 import os
 import sys
 import re
@@ -104,7 +105,7 @@ def exists(url):
     elif parsed_url.scheme in ('s3', 's3s'):
         s3_eps = boto.regioninfo.load_regions()['s3']
         region = None
-        for r, e in s3_eps.items():
+        for r, e in list(s3_eps.items()):
             if re.search(e, parsed_url.netloc):
                 region = r
                 break
