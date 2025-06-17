@@ -35,7 +35,7 @@ def dataset_exists(id, index_suffix):
 
     # es_url and es_index
     es_url = app.conf.GRQ_ES_URL
-    es_index = "grq_*_{}".format(index_suffix.lower())
+    es_index = f"grq_*_{index_suffix.lower()}"
 
     # query
     query = {
@@ -50,17 +50,17 @@ def dataset_exists(id, index_suffix):
     }
 
     if es_url.endswith('/'):
-        search_url = '%s%s/_search' % (es_url, es_index)
+        search_url = '{}{}/_search'.format(es_url, es_index)
     else:
-        search_url = '%s/%s/_search' % (es_url, es_index)
+        search_url = '{}/{}/_search'.format(es_url, es_index)
     r = requests.post(search_url, data=json.dumps(query))
     if r.status_code == 200:
         result = r.json()
         total = result['hits']['total']
     else:
-        print(("Failed to query %s:\n%s" % (es_url, r.text)))
-        print(("query: %s" % json.dumps(query, indent=2)))
-        print(("returned: %s" % r.text))
+        print("Failed to query {}:\n{}".format(es_url, r.text))
+        print("query: %s" % json.dumps(query, indent=2))
+        print("returned: %s" % r.text)
         if r.status_code == 404:
             total = 0
         else:
@@ -254,7 +254,7 @@ def resolve_s1_slc(identifier, download_url, project):
     r = requests.head(vertex_url, allow_redirects=True)
     if r.status_code == 403:
         url = r.url
-        queue = "{}-job_worker-small".format(project)
+        queue = f"{project}-job_worker-small"
     elif r.status_code == 404:
         url = download_url
         queue = "factotum-job_worker-scihub_throttled"
@@ -363,7 +363,7 @@ def extract_job(spyddder_extract_version, queue, localize_url, file, prod_name,
         raise RuntimeError("Need to specify workunit id and job num.")
 
     # set job type and disk space reqs
-    job_type = "job-spyddder-extract:{}".format(spyddder_extract_version)
+    job_type = f"job-spyddder-extract:{spyddder_extract_version}"
 
     # resolve hysds job
     params = {
@@ -374,7 +374,7 @@ def extract_job(spyddder_extract_version, queue, localize_url, file, prod_name,
         "aoi": aoi,
     }
     job = resolve_hysds_job(job_type, queue, priority=priority, params=params,
-                            job_name="%s-%s-%s" % (job_type, aoi, prod_name))
+                            job_name="{}-{}-{}".format(job_type, aoi, prod_name))
 
     # save to archive_filename if it doesn't match url basename
     if os.path.basename(localize_url) != file:
@@ -383,6 +383,6 @@ def extract_job(spyddder_extract_version, queue, localize_url, file, prod_name,
     # add workflow info
     job['payload']['_sciflo_wuid'] = wuid
     job['payload']['_sciflo_job_num'] = job_num
-    print(("job: {}".format(json.dumps(job, indent=2))))
+    print(f"job: {json.dumps(job, indent=2)}")
 
     return job

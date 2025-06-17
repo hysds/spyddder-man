@@ -9,7 +9,6 @@ Sling data from a source to a destination:
 HTTP/HTTPS, FTP and OAuth authentication is handled using .netrc.
 """
 
-from builtins import str
 import os
 import sys
 import re
@@ -81,7 +80,7 @@ def verify(path, file_type):
 def upload(url, path):
     """Upload file to repository location."""
 
-    logging.info("Uploading %s to %s" % (path, url))
+    logging.info("Uploading {} to {}".format(path, url))
     parsed_url = urlparse(url)
     if not osaka.main.supported(url):
         raise RuntimeError("Invalid url: %s" % url)
@@ -142,7 +141,7 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
     """Download file, push to repo and submit job for extraction."""
 
     # log force flags
-    logging.info("force: %s; force_extract: %s" % (force, force_extract))
+    logging.info("force: {}; force_extract: {}".format(force, force_extract))
 
     # get localize_url
     if repo_url.startswith('dav'):
@@ -165,18 +164,18 @@ def sling(download_url, repo_url, prod_name, file_type, prod_date, prod_met=None
     if not is_here or force:
 
         # download
-        logging.info("Downloading %s to %s." % (download_url, path))
+        logging.info("Downloading {} to {}.".format(download_url, path))
         try:
             osaka.main.get(download_url, path, params={
                            "oauth": oauth_url}, measure=True, output="./pge_metrics.json")
         except Exception as e:
             tb = traceback.format_exc()
-            logging.error("Failed to download %s to %s: %s" % (download_url,
+            logging.error("Failed to download {} to {}: {}".format(download_url,
                                                                path, tb))
             raise
 
         # verify downloaded file was not corrupted
-        logging.info("Verifying %s is file type %s." % (path, file_type))
+        logging.info("Verifying {} is file type {}.".format(path, file_type))
         try:
             verify(path, file_type)
         except Exception as e:
@@ -259,7 +258,7 @@ if __name__ == "__main__":
                        "at repo_url", action='store_true')
     args = parser.parse_args()
     # load prod_met as string
-    j = json.loads(open("_context.json", "r").read())
+    j = json.loads(open("_context.json").read())
     prod_met = json.dumps(j["prod_met"])
 
     try:
