@@ -59,7 +59,7 @@ def extract_error(sfl_json):
                         with open('_alt_traceback.txt', 'w') as f:
                             f.write("%s\n" % job_json['traceback'])
             else:
-                err_str = 'SciFlo step %s failed: %s' % (proc, exc)
+                err_str = 'SciFlo step {} failed: {}'.format(proc, exc)
                 with open('_alt_error.txt', 'w') as f:
                     f.write("%s\n" % err_str)
                 with open('_alt_traceback.txt', 'w') as f:
@@ -76,10 +76,10 @@ def run_sciflo(sfl_file, sfl_args):
     # execute sciflo
     cmd = [sflexec_path, "-s", "-f", "-o", "output",
            "--args", '"%s"' % ','.join(sfl_args), sfl_file]
-    print(("Running sflExec.py command:\n%s" % ' '.join(cmd)))
+    print("Running sflExec.py command:\n%s" % ' '.join(cmd))
     #check_call(cmd, shell)
     status = os.system(' '.join(cmd))
-    print(("Exit status is: %d" % status))
+    print("Exit status is: %d" % status)
     if status != 0:
         extract_error('output/sciflo.json')
         status = 1

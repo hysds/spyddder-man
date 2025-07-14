@@ -6,7 +6,6 @@ the product and leveraging the configured metadata extractor defined
 for the product in datasets JSON config.
 """
 
-from builtins import str
 import os
 import sys
 import re
@@ -116,7 +115,7 @@ def create_product(file, prod_name, prod_date):
     # copy _context.json if it exists
     ctx = {}
     ctx_file = "_context.json"
-    prod_ctx_file = "%s_%s.context.json" % (prod_name, prod_date)
+    prod_ctx_file = "{}_{}.context.json".format(prod_name, prod_date)
     if os.path.exists(ctx_file):
         shutil.copy(ctx_file, os.path.join(prod_path, prod_ctx_file))
         with open(ctx_file) as f:
